@@ -472,11 +472,75 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
-        pass
+        LOG.debug('copy_image_to_volume %s', volume['name'])
+
+        properties = utils.brick_get_connector_properties()
+        attach_info = self._attach_volume(context, volume, properties)
+        block_size = self.configuration.volume_dd_blocksize
+
+        try:
+            image_utils.fetch_to_raw(context,
+                                     image_service,
+                                     image_id,
+                                     attach_info['device']['path'],
+                                     block_size)
+        finally:
+            self._detach_volume(attach_info)
+            self.terminate_connection(volume, properties)
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
-        pass
+        LOG.debug('copy_volume_to_image %s.', volume['name'])
+
+        properties = utils.brick_get_connector_properties()
+        attach_info = self._attach_volume(context, volume, properties)
+
+        try:
+            image_utils.upload_volume(context,
+                                      image_service,
+                                      image_meta,
+                                      attach_info['device']['path'])
+        finally:
+            self._detach_volume(attach_info)
+            self.terminate_connection(volume, properties)
+
+
+    def _attach_volume(self, context, volume, properties):
+        """Connect the volume to the host."""
+        LOG.debug('_attach_volume %s', volume['name'])
+        connection = self.initialize_connection(volume, properties)
+
+        # Use Brick's code to do attach/detach
+        #use_multipath = self.configuration.use_multipath_for_image_xfer
+        use_multipath = False
+        device_scan_attempts = self.configuration.num_volume_device_scan_tries
+        protocol = connection['driver_volume_type']
+
+        connector = utils.brick_get_connector(protocol,
+                                              use_multipath=use_multipath,
+                                              device_scan_attempts=
+                                              device_scan_attempts)
+
+        device = connector.connect_volume(connection['data'])
+        host_device = device['path']
+
+        if not connector.check_valid_device(host_device):
+            reason = "Unable to access the backend storage via path %s" % \
+                     host_device
+            raise exception.DeviceUnavailable(reason, path=host_device)
+
+        return {'conn': connection, 'device': device, 'connector': connector}
+
+
+    def _detach_volume(self, attach_info):
+        """Disconnect the volume from the host."""
+        LOG.debug('_detach_volume %s', attach_info['device'])
+
+        # Use Brick's code to do attach/detach
+        connector = attach_info['connector']
+        connector.disconnect_volume(attach_info['conn']['data'],
+                                    attach_info['device'])
+
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a volume from source volume."""
