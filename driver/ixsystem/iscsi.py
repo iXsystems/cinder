@@ -168,7 +168,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         """Creates a iSCSI target on specified volume OR snapshot
         """
 
-
         params = {}
         if from_snapshot:
             params['Source'] = volume_name
@@ -227,7 +226,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def _delete_iscsitarget(self, name):
         """Deletes specified iSCSI target
-            REST API: $ DELETE /iscsitarget/myiscsitarget1
         """
         target_id = self._get_iscsitarget_id(name)
 
@@ -398,6 +396,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
         self._delete_snapshot(freenas_snapshot['name'], freenas_volume['name'])
 
+
     def _get_size_in_gb(self, size_in_bytes):
         "convert size in gbs"
         return size_in_bytes/(1024*1024*1024)
@@ -439,6 +438,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def _update_volume_stats(self):
         """Retrieve stats info from volume group
+            REST API: $ GET /pools/mypool "size":95,"allocated":85,
         """
         LOG.debug('_update_volume_stats')
 
@@ -504,7 +504,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             self._detach_volume(attach_info)
             self.terminate_connection(volume, properties)
 
-
     def _attach_volume(self, context, volume, properties):
         """Connect the volume to the host."""
         LOG.debug('_attach_volume %s', volume['name'])
@@ -531,7 +530,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
         return {'conn': connection, 'device': device, 'connector': connector}
 
-
     def _detach_volume(self, attach_info):
         """Disconnect the volume from the host."""
         LOG.debug('_detach_volume %s', attach_info['device'])
@@ -540,7 +538,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         connector = attach_info['connector']
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
-
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a volume from source volume."""
@@ -555,7 +552,27 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         self.delete_snapshot(temp_snapshot)
         return self.create_export(context, volume)
 
+    def _extend_volume(self, name, new_size):
+        """Extend an existing volumes size."""
+        LOG.debug('_extend__volume name: %s', name)
+
+        params = {}
+        params['volsize'] = str(new_size) + 'G'
+        jparams = json.dumps(params)
+        request_urn = ('%s/%s/%s/%s/') % (FreeNASServer.VOLUME_TABLE, self.configuration.ixsystems_datastore_pool, FreeNASServer.ZVOLS, name)
+        ret = self.handle.invoke_command(FreeNASServer.UPDATE_COMMAND,
+                                         request_urn, jparams)
+        if ret['status'] != FreeNASServer.STATUS_OK:
+            msg = ('Error while extending volume: %s' % ret['response'])
+            raise FreeNASApiError('Unexpected error', msg)
 
     def extend_volume(self, volume, new_size):
         """Driver entry point to extend an existing volumes size."""
-        pass
+        LOG.debug('extend_volume %s', volume['name'])
+
+        freenas_volume = self._generate_freenas_volume_name(volume['name'])
+        freenas_new_size = new_size
+
+        if volume['size'] != freenas_new_size:
+            self._extend_volume(freenas_volume['name'], freenas_new_size)
+
