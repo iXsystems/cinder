@@ -256,6 +256,26 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             msg = ('Error while deleting volume: %s' % ret['response'])
             raise FreeNASApiError('Unexpected error', msg)
 
+    def _delete_cloned_volume_to_snapshot_map(self, volume_name):
+        LOG.debug('_delete_cloned_volume_to_snapshot_map : %s', volume_name)
+        map_file = os.path.join(CONF.volumes_dir, volume_name)
+        try:
+            fd = open(map_file, 'r')
+            snapshot_string = fd.read()
+            snapshot = json.loads(snapshot_string)
+            freenas_volume = self._generate_freenas_volume_name(snapshot['volume_name'])
+            freenas_snapshot = self._generate_freenas_snapshot_name(snapshot['name'])
+            self._delete_snapshot(freenas_snapshot['name'], freenas_volume['name'])
+            fd.close()
+        except Exception as e:
+            LOG.error(_('self._delete_cloned_volume_to_snapshot_map error: %s') % e)
+
+        try:
+            os.remove(map_file)
+        except Exception as e:
+            LOG.error(_('_delete_halo_name_map: %s') % e)
+
+
     def delete_volume(self, volume):
         """Deletes volume and corresponding iscsi target."""
         LOG.debug('delete_volume %s', volume['name'])
@@ -266,6 +286,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             self._delete_iscsitarget(freenas_volume['target'])
         if freenas_volume['name']:
             self._delete_volume(freenas_volume['name'])
+            self._delete_cloned_volume_to_snapshot_map(volume['name'])
 
     def list_volumes(self):
         """Fetches available list of iscsi targets
@@ -395,7 +416,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         freenas_volume = self._generate_freenas_volume_name(snapshot['volume_name'])
 
         self._delete_snapshot(freenas_snapshot['name'], freenas_volume['name'])
-
 
     def _get_size_in_gb(self, size_in_bytes):
         "convert size in gbs"
@@ -539,6 +559,17 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
 
+    def _create_cloned_volume_to_snapshot_map(self, volume_name, snapshot):
+        """ maintain a mapping between cloned volume and tempary snapshot"""
+        map_file = os.path.join(CONF.volumes_dir, volume_name)
+        jparams = json.dumps(snapshot)
+        try:
+             fd = open(map_file, 'w+')
+             fd.write(jparams)
+             fd.close()
+        except Exception as e:
+             LOG.error(_('_create_halo_volume_name_map: %s') % e)
+
     def create_cloned_volume(self, volume, src_vref):
         """Creates a volume from source volume."""
         LOG.debug('create_cloned_volume: %s', src_vref['id'])
@@ -549,6 +580,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
         self.create_snapshot(temp_snapshot)
         self.create_volume_from_snapshot(volume, temp_snapshot)
+        self._create_cloned_volume_to_snapshot_map(volume['name'], temp_snapshot)
         self.delete_snapshot(temp_snapshot)
         return self.create_export(context, volume)
 
