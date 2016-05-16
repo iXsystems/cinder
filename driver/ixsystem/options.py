@@ -21,7 +21,13 @@ ixsystems_connection_opts = [
                help='FREENAS API version'),
     cfg.StrOpt('ixsystems_volume_backend_name',
                default='iXsystems_FREENAS_Storage',
-               help='Backend Storage Controller Name'), ]
+               help='Backend Storage Controller Name'), 
+    cfg.StrOpt('ixsystems_vendor_name',
+               default='iXsystem',
+               help='vendor name on Storage controller'),
+    cfg.StrOpt('ixsystems_storage_protocol',
+               default='iscsi',
+               help='storage protocol on Storage controller'), ]
 
 ixsystems_transport_opts = [
     cfg.StrOpt('ixsystems_transport_type',
