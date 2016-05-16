@@ -49,12 +49,13 @@ volume_dd_blocksize = 512
 volume_group = cinder-zpool
 volume_driver = cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver
 ixsystems_login = root
-ixsystems_password = <password of root of 10.1.1.189>
+ixsystems_password = Pa55w0rd
 ixsystems_server_hostname = 10.1.1.189
 ixsystems_volume_backend_name = iXsystems_FREENAS_Storage
 ixsystems_iqn_prefix = iqn.2005-10.org.freenas.ctl
 ixsystems_datastore_pool = cinder-zpool
-default_volume_type = iscsi
+ixsystems_vendor_name = iXsystems
+ixsystems_storage_protocol = iscsi
 
 [oslo_messaging_rabbit]
 rabbit_userid = stackrabbit
