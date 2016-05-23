@@ -1,6 +1,6 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright (c) 2014 iXsystems
+# Copyright (c) 2016 iXsystems
 """
 FREENAS api for iXsystems FREENAS system.
 

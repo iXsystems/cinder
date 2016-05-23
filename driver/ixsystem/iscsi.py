@@ -1,6 +1,6 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
+#vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-# Copyright (c) 2014 iXsystems
+# Copyright (c) 2016 iXsystems
 """
 Volume driver for iXsystems iSCSI storage systems.
 
@@ -258,25 +258,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             msg = ('Error while deleting volume: %s' % ret['response'])
             raise FreeNASApiError('Unexpected error', msg)
 
-    def _delete_cloned_volume_to_snapshot_map(self, volume_name):
-        LOG.debug('_delete_cloned_volume_to_snapshot_map : %s', volume_name)
-        map_file = os.path.join(CONF.volumes_dir, volume_name)
-        try:
-            fd = open(map_file, 'r')
-            snapshot_string = fd.read()
-            snapshot = json.loads(snapshot_string)
-            freenas_volume = self._generate_freenas_volume_name(snapshot['volume_name'])
-            freenas_snapshot = self._generate_freenas_snapshot_name(snapshot['name'])
-            self._delete_snapshot(freenas_snapshot['name'], freenas_volume['name'])
-            fd.close()
-        except Exception as e:
-            LOG.error(_('self._delete_cloned_volume_to_snapshot_map error: %s') % e)
-        
-        try:
-            os.remove(map_file)
-        except Exception as e:
-            LOG.error(_('_delete_halo_name_map: %s') % e)
-
 
     def delete_volume(self, volume):
         """Deletes volume and corresponding iscsi target."""
@@ -288,7 +269,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             self._delete_iscsitarget(freenas_volume['target'])
         if freenas_volume['name']:
             self._delete_volume(freenas_volume['name'])
-            self._delete_cloned_volume_to_snapshot_map(volume['name'])
 
     def list_volumes(self):
         """Fetches available list of iscsi targets
@@ -493,9 +473,9 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         
         data = {}
         data["volume_backend_name"] = self.backend_name
-        data["vendor_name"] =  self.vendor_name #'iXsystems'
+        data["vendor_name"] =  self.vendor_name
         data["driver_version"] = self.VERSION
-        data["storage_protocol"] = self.storage_protocol #'iscsi'
+        data["storage_protocol"] = self.storage_protocol
         data['total_capacity_gb'] = self._get_size_in_gb(json.loads(ret['response'])['avail'] + json.loads(ret['response'])['used'])
         data['free_capacity_gb'] = self._get_size_in_gb(json.loads(ret['response'])['avail'])
         data['reserved_percentage'] = \
