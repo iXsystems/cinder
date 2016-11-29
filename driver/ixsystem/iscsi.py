@@ -23,7 +23,7 @@ from cinder.volume import utils as volume_utils
 from cinder.i18n import _
 from lxml import etree
 import os
-from oslo.config import cfg
+from oslo_config import cfg
 import simplejson as json
 
 LOG = logging.getLogger(__name__)

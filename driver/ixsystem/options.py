@@ -4,7 +4,7 @@
 
 """Contains configuration options for iXsystems Cinder drivers."""
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 ixsystems_connection_opts = [
     cfg.StrOpt('ixsystems_server_hostname',
