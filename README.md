@@ -84,7 +84,7 @@ After following above steps, cinder driver need to be configured. open /etc/cind
     screen -x stack .
     ```
 
-    Go to `c-vol` screen using screen command like options like `Ctrl-a p` to go to previous screen; `C-a p`
+    Go to `c-vol` screen using screen command like options like `Ctrl-a p` to go to previous screen; `Ctrl-a p`
 
     Kill `C-vol` service using `Ctrl-c` command and press up arrow button and then Enter to restart cinder service. Now new edited cinder.conf file is read by cinder service. 
    
