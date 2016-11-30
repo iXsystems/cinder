@@ -32,24 +32,24 @@ After following above steps, cinder driver need to be configured. open /etc/cind
 1. Edits - Edit following parameters in cinder.conf
 
 ```
-default_volume_type = ixsystems-iscsi  <default driver to pick up. The value is identifier to group driver specific configuration parameters>
-enabled_backends = ixsystems-iscsi, lvmdriver-1 <list of drivers enabled>
+default_volume_type = ixsystems-iscsi  
+enabled_backends = ixsystems-iscsi, lvmdriver-1 
 ```
 2. Additions - Add following parameters and their appropriate value in cinder.conf 
 
 ```
 [ixsystems-iscsi]
-iscsi_helper = tgtadm <Standard Value>
-volume_dd_blocksize = 512 <block size>
-volume_driver = cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver <Stardard Value : it is the path of main class of iXsystems cinder driver>
+iscsi_helper = <iscsi helper type. Standard Value>
+volume_dd_blocksize = <block size>
+volume_driver = <It is the path of main class of iXsystems cinder driver. Stardard Value for this driver is cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver>
 ixsystems_login = <username of TrueNAS Host>
 ixsystems_password = <Password of TrueNAS Host>
 ixsystems_server_hostname = <IP Address of TrueNAS Host>
-ixsystems_volume_backend_name = iXsystems_FREENAS_Storage <driver specific information> 
+ixsystems_volume_backend_name = <driver specific information. Standard value is 'iXsystems_FREENAS_Storage' > 
 ixsystems_iqn_prefix = <Base name of ISCSI Target. (Get it from TrueNAS web UI in from following section : Sharing -> Block(iscsi) -> Target Global Configuration -> Base Name)>
-ixsystems_datastore_pool = <Create a dataset on TreeNAS host and assign dataset name here as a value e.g. cinder-zpool>
-ixsystems_vendor_name = iXsystems <driver specific information>
-ixsystems_storage_protocol = iscsi <driver specific information>
+ixsystems_datastore_pool = <Create a dataset on TreeNAS host and assign dataset name here as a value e.g. 'cinder-zpool'>
+ixsystems_vendor_name = <driver specific information. Standard value is 'iXsystems' >
+ixsystems_storage_protocol =  <driver specific information. Standard value is 'iscsi'>
 ```
 
 Example is given bellow,
@@ -71,8 +71,10 @@ ixsystems_storage_protocol = iscsi
 
 
 3. Restarting cinder service
+ 
+There are two ways to to restart cinder service with new cinder driver 
 
- I. Using screen command - 
+1. Using screen command - 
 
 The `screen` Command is used to observe the running services. You can read documentation for `screen` here - (https://www.gnu.org/software/screen/manual/screen.html)
 
@@ -85,8 +87,10 @@ screen -x stack .
 Go to `c-vol` screen using screen command like options like `Ctrl-a p` to go to previous screen; `C-a p`
  
 Kill `C-vol` service using `Ctrl-c` command and press up arrow button and then Enter to restart cinder service. Now new edited cinder.conf file is read by cinder service. 
+ 
+                                                  OR
 
- II. Using cinder service command
+2. Using cinder service command
 
 Run following command to attach cinder service screen. After the command is run, existing cinder service screen is attached on terminal we will kill and restart the existing service.  
 
