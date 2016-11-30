@@ -1,63 +1,71 @@
 
 [keystone_authtoken]
+memcached_servers = 10.3.1.84:11211
 signing_dir = /var/cache/cinder
 cafile = /opt/stack/data/ca-bundle.pem
-auth_uri = http://10.1.1.127:5000
-project_domain_id = default
+auth_uri = http://10.3.1.84/identity
+project_domain_name = Default
 project_name = service
-user_domain_id = default
+user_domain_name = Default
 password = naruto
 username = cinder
-auth_url = http://10.1.1.127:35357
-auth_plugin = password
+auth_url = http://10.3.1.84/identity_admin
+auth_type = password
 
 [DEFAULT]
-glance_api_servers = http://10.1.1.127:9292
+cinder_internal_tenant_user_id = aa6626221de94845b03a897849dd2f74
+cinder_internal_tenant_project_id = 06d52ebe97f74983b5c451a317e0366b
+graceful_shutdown_timeout = 5
+os_privileged_user_tenant = service
+os_privileged_user_password = naruto
+os_privileged_user_name = nova
+glance_api_servers = http://10.3.1.84:9292
 osapi_volume_workers = 2
 logging_exception_prefix = %(color)s%(asctime)s.%(msecs)03d TRACE %(name)s [01;35m%(instance)s[00m
 logging_debug_format_suffix = [00;33mfrom (pid=%(process)d) %(funcName)s %(pathname)s:%(lineno)d[00m
 logging_default_format_string = %(asctime)s.%(msecs)03d %(color)s%(levelname)s %(name)s [[00;36m-%(color)s] [01;35m%(instance)s%(color)s%(message)s[00m
 logging_context_format_string = %(asctime)s.%(msecs)03d %(color)s%(levelname)s %(name)s [[01;36m%(request_id)s [00;36m%(user_id)s %(project_id)s%(color)s] [01;35m%(instance)s%(color)s%(message)s[00m
-rpc_backend = rabbit
+volume_clear = zero
+transport_url = rabbit://stackrabbit:naruto@10.3.1.84:5672/
 default_volume_type = ixsystems-iscsi
-enabled_backends = ixsystems-iscsi
+enabled_backends = ixsystems-iscsi, lvmdriver-1
 os_region_name = RegionOne
-enable_v1_api = true
+my_ip = 10.3.1.84
 periodic_interval = 60
 state_path = /opt/stack/data/cinder
+osapi_volume_listen = 0.0.0.0
 osapi_volume_extension = cinder.api.contrib.standard_extensions
 rootwrap_config = /etc/cinder/rootwrap.conf
 api_paste_config = /etc/cinder/api-paste.ini
 iscsi_helper = tgtadm
-verbose = True
 debug = True
 auth_strategy = keystone
 nova_catalog_admin_info = compute:nova:adminURL
 nova_catalog_info = compute:nova:publicURL
 
 [database]
-connection = mysql://root:naruto@127.0.0.1/cinder?charset=utf8
+connection = mysql+pymysql://root:naruto@127.0.0.1/cinder?charset=utf8
 
 [oslo_concurrency]
 lock_path = /opt/stack/data/cinder
 
 [ixsystems-iscsi]
 iscsi_helper = tgtadm
-iscsi_ip_address = 10.1.1.189
-volume_backend_name = iXsystems_FREENAS_Storage
 volume_dd_blocksize = 512
-volume_group = cinder-zpool
 volume_driver = cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver
 ixsystems_login = root
 ixsystems_password = Pa55w0rd
-ixsystems_server_hostname = 10.1.1.189
+ixsystems_server_hostname = 10.3.1.81
 ixsystems_volume_backend_name = iXsystems_FREENAS_Storage
 ixsystems_iqn_prefix = iqn.2005-10.org.freenas.ctl
 ixsystems_datastore_pool = cinder-zpool
 ixsystems_vendor_name = iXsystems
 ixsystems_storage_protocol = iscsi
 
-[oslo_messaging_rabbit]
-rabbit_userid = stackrabbit
-rabbit_password = naruto
-rabbit_hosts = 10.1.1.127
+[lvmdriver-1]
+image_volume_cache_enabled = True
+lvm_type = default
+iscsi_helper = tgtadm
+volume_group = stack-volumes-lvmdriver-1
+volume_driver = cinder.volume.drivers.lvm.LVMVolumeDriver
+volume_backend_name = lvmdriver-1
