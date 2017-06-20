@@ -2,10 +2,9 @@
 
 # Copyright (c) 2016 iXsystems
 import six
-from oslo_utils import units
 def get_size_in_gb(size_in_bytes):
     "convert size in gbs"
-    return size_in_bytes // units.G 
+    return size_in_bytes/(1024*1024*1024)
 
 def generate_freenas_volume_name(name, iqn_prefix):
     """Create FREENAS volume / iscsitarget name from Cinder name."""
