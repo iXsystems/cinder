@@ -23,7 +23,7 @@ Getting Started
 Following are steps for using iXsystems Cinder driver.
 
 ```
-% git clone --depth=1 https://github.com/iXsystems/
+% git clone --depth=1 https://github.com/iXsystems/cinder
 % cp -R ./cinder/driver/ixsystem/ /opt/stack/cinder/cinder/volume/drivers/
 ```
 
