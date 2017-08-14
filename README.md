@@ -24,7 +24,7 @@ Following are steps for using iXsystems Cinder driver.
 
 ```
 % git clone --depth=1 https://github.com/iXsystems/cinder
-% cp -R ./cinder/driver/ixsystem/ /opt/stack/cinder/cinder/volume/drivers/
+% cp -R ./cinder/driver/ixsystems/ /opt/stack/cinder/cinder/volume/drivers/
 ```
 
 After following above steps, cinder driver need to be configured. open /etc/cinder/cinder.conf in any editor of your choice and add/edit the following parameters,
