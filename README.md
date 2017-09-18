@@ -1,41 +1,46 @@
 Cinder Driver for iXsystems
-===========
+===========================
 
-This repo contains driver scripts for openstack block storage manipulation project called Openstack Cinder. This cinder driver will use
+This repo contains driver scripts for the OpenStack block storage manipulation project called OpenStack Cinder.
+The Cinder driver uses:
 
 * FreeNAS 9.3 / 9.10
 
 
-Requirements 
-===========
-A system running FreeNAS 9.3 / 9.10, with at minimum 8GB of memory and a minimum 20GB Disk.
-Another system running Devstack Kilo Release with following configuration
+Requirements
+============
 
-Minimal System Requirements
-* RAM : 4 GB
-* CPU : 4 Cores
-* Disk : 40 GB
+1. A system running FreeNAS 9.3 / 9.10 with at least 8 Gb of memory and a minimum 20 Gb disk.
+2. Another system running Devstack Kilo Release with this configuration:
+
+   Minimal System Requirements:
+
+   * RAM : 4 Gb
+   * CPU : 4 Cores
+   * Disk : 40 Gb
 
 
 Getting Started
-===========
+===============
 
-Following are steps for using iXsystems Cinder driver.
+Here are the initial steps for using the iXsystems Cinder driver:
 
 ```
 % git clone --depth=1 https://github.com/iXsystems/cinder
 % cp -R ./cinder/driver/ixsystems/ /opt/stack/cinder/cinder/volume/drivers/
 ```
 
-After following above steps, cinder driver need to be configured. open /etc/cinder/cinder.conf in any editor of your choice and add/edit the following parameters,
+After following these steps, the Cinder driver needs to be configured.
+Open **/etc/cinder/cinder.conf** in an editor and add or edit these parameters, then restart the service to enable the changes:
 
-1. Edits - Edit following parameters in cinder.conf
+1. Edits - Edit these lines in **cinder.conf**:
 
  ```
- default_volume_type = ixsystems-iscsi  
- enabled_backends = ixsystems-iscsi, lvmdriver-1 
+ default_volume_type = ixsystems-iscsi
+ enabled_backends = ixsystems-iscsi, lvmdriver-1
  ```
-2. Additions - Add following parameters and their appropriate value in cinder.conf 
+ 
+2. Additions - Add these parameters and the appropriate values in **cinder.conf**:
 
  ```
  [ixsystems-iscsi]
@@ -45,14 +50,14 @@ After following above steps, cinder driver need to be configured. open /etc/cind
  ixsystems_login = <username of TrueNAS Host>
  ixsystems_password = <Password of TrueNAS Host>
  ixsystems_server_hostname = <IP Address of TrueNAS Host>
- ixsystems_volume_backend_name = <driver specific information. Standard value is 'iXsystems_FREENAS_Storage' > 
+ ixsystems_volume_backend_name = <driver specific information. Standard value is 'iXsystems_FREENAS_Storage' >
  ixsystems_iqn_prefix = <Base name of ISCSI Target. (Get it from TrueNAS web UI in from following section : Sharing -> Block(iscsi) -> Target Global Configuration -> Base Name)>
  ixsystems_datastore_pool = <Create a dataset on TreeNAS host and assign dataset name here as a value e.g. 'cinder-zpool'>
  ixsystems_vendor_name = <driver specific information. Standard value is 'iXsystems' >
  ixsystems_storage_protocol =  <driver specific information. Standard value is 'iscsi'>
  ```
 
- Example is given bellow,
+Here is an example configuration:
 
  ```
  [ixsystems-iscsi]
@@ -69,55 +74,62 @@ After following above steps, cinder driver need to be configured. open /etc/cind
  ixsystems_storage_protocol = iscsi
  ```
 
+3. Restart the Cinder service
 
-3. Restarting cinder service
- 
- There are two ways to to restart cinder service with new cinder driver 
+   There are two ways to to restart the Cinder service with the new Cinder driver:
 
- 1. Using screen command - 
+   1. Use the `screen` command:
    
-   The `screen` Command is used to observe the running services. You can read documentation for `screen` here - (https://www.gnu.org/software/screen/manual/screen.html)
+      The `screen` command is used to observe the running services.
+      Here is documentation for `screen`: (https://www.gnu.org/software/screen/manual/screen.html)
    
-    Use following command to attach to devstack screens
+      Use this command to attach to the devstack screens:
 
-    ```
-    screen -x stack .
-    ```
+      ```
+      screen -x stack .
+      ```
 
-    Go to `c-vol` screen using screen command like options like `Ctrl-a p` to go to previous screen; `Ctrl-a p`
+      Go to the `c-vol` screen using `screen` command options like `Ctrl-a p` to go to the previous screen.
 
-    Kill `C-vol` service using `Ctrl-c` command and press up arrow button and then Enter to restart cinder service. Now new edited cinder.conf file is read by cinder service. 
-   
-                                                    OR
-   
- 2. Using cinder service command
-   
-   Run following command to attach cinder service screen. After the command is run, existing cinder service screen is attached on terminal we will kill and restart the existing service.  
-   
-    ```
-    /usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf & echo $! >/opt/stack/status/stack/c-vol.pid; fg || echo "c-vol failed to start" | tee "/opt/stack/status/stack/c-vol.failure"
-    ```
-    Kill service using `Ctrl-c` command and press up arrow button and then Enter to restart cinder service. Now new edited cinder.conf file is read by cinder service.
-   
+      Kill the `C-vol` service using `Ctrl-c` and press the **up arrow** button and **Enter** to restart the Cinder service.
+      The edited **cinder.conf** is read by the Cinder service as it restarts.
+
+                                                    **OR**
+
+   2. Use the `cinder service` command:
+
+      Run the following command to attach cinder service screen.
+      After the command is run, the existing Cinder service screen is attached on a terminal.
+      Then terminate and restart the existing service.
+
+      ```
+      /usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf & echo $! >/opt/stack/status/stack/c-vol.pid; fg || echo "c-vol failed to start" | tee "/opt/stack/status/stack/c-vol.failure"
+      ```
+      
+      Disable the service using `Ctrl-c`.
+      Press **up arrow** and then **Enter** to restart the Cinder service.
+      The edited **cinder.conf** file is read by Cinder service during the restart.
 
 
-Using iXsystems Cinder Driver
-===========
+Using the iXsystems Cinder Driver
+=================================
 
-Following are few example commands for using iXsystems Cinder driver-
+Here are some examples commands that use the iXsystems Cinder driver:
 
-To create volume -
-$ cinder create --name <volumeName> <volumeSizeInGB>
-Example
-$ cinder create --name TestVolume 2
+* Create a volume:
+
+  `$ cinder create --name <volumeName> <volumeSizeInGB>`
+
+  Example:
+
+  `$ cinder create --name TestVolume 2`
+
 
 About Source Code
 =================
 
-iXsystems Cinder Driver contains following scripts -
+The iXsystems Cinder driver uses several scripts:
 
-* iscsi.py - Cinder APIs are defined here. For Example - create_volume, delete_volume etc.
-* freenasapi.py - REST API Call routine is defined here and it contains all the methods necessary to do it.
-* options.py - It defines default freenas configuration parameters if those are not fetched from cinder.conf file.
-
-
+* **iscsi.py**: Cinder APIs are defined here. Examples: `create_volume`, `delete_volume`, etc.
+* **freenasapi.py**: The REST API call routine is defined here and it contains all necessary methods.
+* **options.py**: Defines the default FreeNAS configuration parameters if not fetched from the **cinder.conf** file.
