@@ -19,7 +19,7 @@ class FreeNASServer(object):
     """FreeNAS server connection logic."""
 
     FREENAS_API_VERSION = "v1"
-    TRANSPORT_TYPE = 'https'
+    TRANSPORT_TYPE = 'http'
     STYLE_LOGIN_PASSWORD = 'basic_auth'
 
     # FREENAS Commands
@@ -29,13 +29,14 @@ class FreeNASServer(object):
     DELETE_COMMAND = 'delete'
 
     # FREENAS API query tables
-    VOLUME_TABLE = "/storage/volume"
-    ISCSI_TARGET_TABLE = "/services/iscsi/extent"
-    ISCSI_EXTENT_TABLE = "/services/iscsi/targettoextent"
-    SNAPSHOT_TABLE = "/storage/snapshot"
-    POOL_TABLE = "/pool"
+    REST_API_VOLUME = "/storage/volume"
+    REST_API_EXTENT = "/services/iscsi/extent"
+    REST_API_TARGET = "/services/iscsi/target"
+    REST_API_TARGET_TO_EXTENT = "/services/iscsi/targettoextent"
+    REST_API_TARGET_GROUP = "/services/iscsi/targetgroup/"
+    REST_API_SNAPSHOT = "/storage/snapshot"
     ZVOLS = "zvols"
-    TARGET_ID = 1
+    TARGET_ID = -1 #We assume invalid id to begin with
     STORAGE_TABLE = "/storage"
     CLONE = "clone"
     # Command response format

@@ -51,5 +51,11 @@ ixsystems_provisioning_opts = [
                default=0,
                help='Reserved space on Storage controller'),
     cfg.StrOpt('ixsystems_iqn_prefix',
-               default=None,
-               help='Storage controller iSCSI Qualified Name prefix'), ]
+               default='iqn.2005-10.org.freenas.ctl',
+               help='Storage controller iSCSI Qualified Name prefix'), 
+    cfg.StrOpt('ixsystems_portal_id',
+               default=1,
+               help='Storage controller iSCSI portal ID'),
+    cfg.StrOpt('ixsystems_initiator_id',
+               default=1,
+               help='Storage controller iSCSI Initiator ID'), ]
