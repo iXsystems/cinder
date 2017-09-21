@@ -13,8 +13,8 @@ from cinder.image import image_utils
 from cinder import utils
 from oslo_log import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.ixsystems.freenasapi import FreeNASApiError
-from cinder.volume.drivers.ixsystems.freenasapi import FreeNASServer
+from cinder.volume.drivers.ixsystems.truenasapi import TrueNASApiError
+from cinder.volume.drivers.ixsystems.truenasapi import TrueNASServer
 from cinder.volume.drivers.ixsystems.options import ixsystems_basicauth_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_connection_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_provisioning_opts
@@ -37,8 +37,8 @@ CONF.register_opts(ixsystems_basicauth_opts)
 CONF.register_opts(ixsystems_provisioning_opts)
 
 
-class FreeNASISCSIDriver(driver.ISCSIDriver):
-    """FREENAS iSCSI volume driver."""
+class TrueNASISCSIDriver(driver.ISCSIDriver):
+    """TRUENAS iSCSI volume driver."""
 
     VERSION = "1.0.0"
     IGROUP_PREFIX = 'openstack-'
@@ -50,9 +50,9 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
                       'ixsystems_datastore_pool', 'ixsystems_iqn_prefix', ]
 
     def __init__(self, *args, **kwargs):
-        """Initialize FreeNASISCSIDriver Class."""
+        """Initialize TrueNASISCSIDriver Class."""
         LOG.info('iXsystems: Init Cinder Driver')
-        super(FreeNASISCSIDriver, self).__init__(*args, **kwargs)
+        super(TrueNASISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(ixsystems_connection_opts)
         self.configuration.append_config_values(ixsystems_basicauth_opts)
         self.configuration.append_config_values(ixsystems_transport_opts)
@@ -63,13 +63,13 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
 
     def check_for_setup_error(self):
-        """Check for iXsystems FREENAS configuration parameters."""
+        """Check for iXsystems TRUENAS configuration parameters."""
         LOG.info('iXSystems: Check For Setup Error')
         self.common._check_flags()
 
     def do_setup(self, context):
-        """Setup iXsystems FREENAS driver
-            Check for configuration flags and setup iXsystems FREENAS client
+        """Setup iXsystems TRUENAS driver
+            Check for configuration flags and setup iXsystems TRUENAS client
         """
         LOG.info('iXsystems Do Setup')
         #TODO:add check to see if volume exist, able to connect
@@ -82,18 +82,18 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Create Volume')
         LOG.debug('create_volume : volume name :: %s', volume['name'])
 
-        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'],
+        truenas_volume = ix_utils.generate_truenas_volume_name(volume['name'],
 						self.configuration.ixsystems_iqn_prefix)
         
-        LOG.debug('volume name after freenas generate : %s', json.dumps(freenas_volume))
+        LOG.debug('volume name after truenas generate : %s', json.dumps(truenas_volume))
 
-        freenas_volume['size'] = volume['size']
-        freenas_volume['target_size'] = volume['size']
+        truenas_volume['size'] = volume['size']
+        truenas_volume['target_size'] = volume['size']
 
-        self.common._create_volume(freenas_volume['name'], freenas_volume['size'])
+        self.common._create_volume(truenas_volume['name'], truenas_volume['size'])
         #Remove LUN Creation from here,check at initi
-        self.common._create_iscsitarget(freenas_volume['target'], 
-                                        freenas_volume['name'])
+        self.common._create_iscsitarget(truenas_volume['target'], 
+                                        truenas_volume['name'])
 
 
     def delete_volume(self, volume):
@@ -101,12 +101,12 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Delete Volume')
         LOG.debug('delete_volume %s', volume['name'])
 
-        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'], self.configuration.ixsystems_iqn_prefix)
+        truenas_volume = ix_utils.generate_truenas_volume_name(volume['name'], self.configuration.ixsystems_iqn_prefix)
 
-        if freenas_volume['target']:
-            self.common._delete_iscsitarget(freenas_volume['target'])
-        if freenas_volume['name']:
-            self.common._delete_volume(freenas_volume['name'])
+        if truenas_volume['target']:
+            self.common._delete_iscsitarget(truenas_volume['target'])
+        if truenas_volume['name']:
+            self.common._delete_volume(truenas_volume['name'])
 
 
     def create_export(self, context, volume, connector):
@@ -136,17 +136,17 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
         LOG.info('iXsystems Initialise Connection')
-        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'],self.configuration.ixsystems_iqn_prefix)
-        if not freenas_volume['name']:
+        truenas_volume = ix_utils.generate_truenas_volume_name(volume['name'],self.configuration.ixsystems_iqn_prefix)
+        if not truenas_volume['name']:
             # is this snapshot?
-            freenas_volume = ix_utils.generate_freenas_snapshot_name(volume['name'],self.configuration.ixsystems_iqn_prefix)
+            truenas_volume = ix_utils.generate_truenas_snapshot_name(volume['name'],self.configuration.ixsystems_iqn_prefix)
 
         LOG.info('initialize_connection Entry: %s \t %s', volume['name'], connector['host'])
         properties = {}
         properties['target_discovered'] = False
         properties['target_portal'] = ix_utils.get_iscsi_portal(self.configuration.ixsystems_server_hostname,
 						self.configuration.ixsystems_server_iscsi_port)
-        properties['target_iqn'] = freenas_volume['iqn']
+        properties['target_iqn'] = truenas_volume['iqn']
         properties['volume_id'] = volume['id']
         
         LOG.debug('initialize_connection data: %s', properties)
@@ -161,34 +161,34 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Create Snapshot')
         LOG.debug('create_snapshot %s', snapshot['name'])
         
-        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(snapshot['name'], self.configuration.ixsystems_iqn_prefix)
-        freenas_volume = ix_utils.generate_freenas_volume_name(snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
+        truenas_snapshot = ix_utils.generate_truenas_snapshot_name(snapshot['name'], self.configuration.ixsystems_iqn_prefix)
+        truenas_volume = ix_utils.generate_truenas_volume_name(snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
 
-        self.common._create_snapshot(freenas_snapshot['name'], freenas_volume['name'])
+        self.common._create_snapshot(truenas_snapshot['name'], truenas_volume['name'])
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
         LOG.info('iXsystems Delete Snapshot')
         LOG.debug('delete_snapshot %s', snapshot['name'])
-        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(snapshot['name'],self.configuration.ixsystems_iqn_prefix)
-        freenas_volume = ix_utils.generate_freenas_volume_name(snapshot['volume_name'],self.configuration.ixsystems_iqn_prefix)
+        truenas_snapshot = ix_utils.generate_truenas_snapshot_name(snapshot['name'],self.configuration.ixsystems_iqn_prefix)
+        truenas_volume = ix_utils.generate_truenas_volume_name(snapshot['volume_name'],self.configuration.ixsystems_iqn_prefix)
         
-        self.common._delete_snapshot(freenas_snapshot['name'], freenas_volume['name'])
+        self.common._delete_snapshot(truenas_snapshot['name'], truenas_volume['name'])
     
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
         LOG.info('iXsystems Craete Volume From Snapshot')
         LOG.info('create_volume_from_snapshot %s', snapshot['name'])
 
-        existing_vol = ix_utils.generate_freenas_volume_name(snapshot['volume_name'],self.configuration.ixsystems_iqn_prefix)
-        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(snapshot['name'],self.configuration.ixsystems_iqn_prefix)
-        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'],self.configuration.ixsystems_iqn_prefix)
-        freenas_volume['size'] = volume['size']
-        freenas_volume['target_size'] = volume['size']
+        existing_vol = ix_utils.generate_truenas_volume_name(snapshot['volume_name'],self.configuration.ixsystems_iqn_prefix)
+        truenas_snapshot = ix_utils.generate_truenas_snapshot_name(snapshot['name'],self.configuration.ixsystems_iqn_prefix)
+        truenas_volume = ix_utils.generate_truenas_volume_name(volume['name'],self.configuration.ixsystems_iqn_prefix)
+        truenas_volume['size'] = volume['size']
+        truenas_volume['target_size'] = volume['size']
 
-        self.common._create_volume_from_snapshot(freenas_volume['name'], freenas_snapshot['name'], existing_vol['name'])
-        self.common._create_iscsitarget(freenas_volume['target'],
-                                        freenas_volume['name'])
+        self.common._create_volume_from_snapshot(truenas_volume['name'], truenas_snapshot['name'], existing_vol['name'])
+        self.common._create_iscsitarget(truenas_volume['target'],
+                                        truenas_volume['name'])
 
 
     def get_volume_stats(self, refresh=False):
@@ -218,8 +218,8 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Extent Volume')
         LOG.info('extend_volume %s', volume['name'])
         
-        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'],self.configuration.ixsystems_iqn_prefix) 
-        freenas_new_size = new_size
+        truenas_volume = ix_utils.generate_truenas_volume_name(volume['name'],self.configuration.ixsystems_iqn_prefix) 
+        truenas_new_size = new_size
         
-        if volume['size'] != freenas_new_size:
-            self.common._extend_volume(freenas_volume['name'], freenas_new_size)
+        if volume['size'] != truenas_new_size:
+            self.common._extend_volume(truenas_volume['name'], truenas_new_size)

@@ -2,9 +2,9 @@
 
 # Copyright (c) 2016 iXsystems
 """
-FREENAS api for iXsystems FREENAS system.
+TRUENAS api for iXsystems TRUENAS system.
 
-Contains classes required to issue REST based api calls to FREENAS system.
+Contains classes required to issue REST based api calls to TRUENAS system.
 """
 
 #from cinder.openstack.common import jsonutils
@@ -15,20 +15,20 @@ import simplejson as json
 LOG = logging.getLogger(__name__)
 
 
-class FreeNASServer(object):
-    """FreeNAS server connection logic."""
+class TrueNASServer(object):
+    """TrueNAS server connection logic."""
 
-    FREENAS_API_VERSION = "v1"
+    TRUENAS_API_VERSION = "v1"
     TRANSPORT_TYPE = 'http'
     STYLE_LOGIN_PASSWORD = 'basic_auth'
 
-    # FREENAS Commands
+    # TRUENAS Commands
     SELECT_COMMAND = 'select'
     CREATE_COMMAND = 'create'
     UPDATE_COMMAND = 'update'
     DELETE_COMMAND = 'delete'
 
-    # FREENAS API query tables
+    # TRUENAS API query tables
     REST_API_VOLUME = "/storage/volume"
     REST_API_EXTENT = "/services/iscsi/extent"
     REST_API_TARGET = "/services/iscsi/target"
@@ -49,7 +49,7 @@ class FreeNASServer(object):
 
     def __init__(self, host, port,
                  username=None, password=None,
-                 api_version=FREENAS_API_VERSION,
+                 api_version=TRUENAS_API_VERSION,
                  transport_type=TRANSPORT_TYPE,
                  style=STYLE_LOGIN_PASSWORD):
         self._host = host
@@ -100,7 +100,7 @@ class FreeNASServer(object):
         """Set the authorization style for communicating with the server.
            Supports basic_auth for now.
         """
-        if style.lower() not in (FreeNASServer.STYLE_LOGIN_PASSWORD):
+        if style.lower() not in (TrueNASServer.STYLE_LOGIN_PASSWORD):
             raise ValueError('Unsupported authentication style')
         self._auth_style = style.lower()
 
@@ -128,7 +128,7 @@ class FreeNASServer(object):
         return urllib2.Request(url, param_list, headers)
 
     def _get_method(self, command_d):
-        """Select http method based on FREENAS command."""
+        """Select http method based on TRUENAS command."""
         if command_d == self.SELECT_COMMAND:
             return 'GET'
         elif command_d == self.CREATE_COMMAND:
@@ -141,7 +141,7 @@ class FreeNASServer(object):
             return None
 
     def _parse_result(self, command_d, response_d):
-        """parses the response upon execution of FREENAS API. COMMAND_RESPONSE is
+        """parses the response upon execution of TRUENAS API. COMMAND_RESPONSE is
            the dictionary object with status and response fields.
            If error, set status to ERROR else set it to OK
         """
@@ -182,7 +182,7 @@ class FreeNASServer(object):
         request = self._create_request(request_d, param_list)
         method = self._get_method(command_d)
         if not method:
-            raise FreeNASApiError("Invalid FREENAS command")
+            raise TrueNASApiError("Invalid TRUENAS command")
         request.get_method = lambda: method
         try:
             response_d = urllib2.urlopen(request)
@@ -193,22 +193,22 @@ class FreeNASServer(object):
             if error_d:
                 return error_d
             else:
-                raise FreeNASApiError(e.code, e.msg)
+                raise TrueNASApiError(e.code, e.msg)
         except Exception as e:
             error_d = self._get_error_info(e)
             if error_d:
                 return error_d
             else:
-                raise FreeNASApiError('Unexpected error', e)
+                raise TrueNASApiError('Unexpected error', e)
         return response
 
 
-class FreeNASApiError(Exception):
-    """Base exception class for FREENAS api errors."""
+class TrueNASApiError(Exception):
+    """Base exception class for TRUENAS api errors."""
 
     def __init__(self, code='unknown', message='unknown'):
         self.code = code
         self.message = message
 
     def __str__(self, *args, **kwargs):
-        return 'FREENAS api failed. Reason - %s:%s' % (self.code, self.message)
+        return 'TRUENAS api failed. Reason - %s:%s' % (self.code, self.message)
