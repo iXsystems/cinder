@@ -67,7 +67,7 @@ Here is an example configuration:
  ixsystems_login = root
  ixsystems_password = thisisdummypassword
  ixsystems_server_hostname = 10.3.1.81
- ixsystems_volume_backend_name = iXsystems_TRUENAS_Storage
+ ixsystems_volume_backend_name = iXsystems_FREENAS_Storage
  ixsystems_iqn_prefix = iqn.2005-10.org.freenas.ctl
  ixsystems_datastore_pool = cinder-zpool
  ixsystems_vendor_name = iXsystems
