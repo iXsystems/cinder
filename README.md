@@ -4,7 +4,7 @@ Cinder Driver for iXsystems
 This repo contains driver scripts for the OpenStack block storage manipulation project called OpenStack Cinder.
 The Cinder driver uses:
 
-* FreeNAS 9.3 / 9.10
+* TrueNAS
 
 
 Requirements
@@ -131,5 +131,5 @@ About Source Code
 The iXsystems Cinder driver uses several scripts:
 
 * **iscsi.py**: Cinder APIs are defined here. Examples: `create_volume`, `delete_volume`, etc.
-* **freenasapi.py**: The REST API call routine is defined here and it contains all necessary methods.
-* **options.py**: Defines the default FreeNAS configuration parameters if not fetched from the **cinder.conf** file.
+* **truenasapi.py**: The REST API call routine is defined here and it contains all necessary methods.
+* **options.py**: Defines the default TrueNAS configuration parameters if not fetched from the **cinder.conf** file.
