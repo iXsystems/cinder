@@ -20,7 +20,7 @@ ixsystems_connection_opts = [
                default='v1.0',
                help='TRUENAS API version'),
     cfg.StrOpt('ixsystems_volume_backend_name',
-               default='iXsystems_FREENAS_Storage',
+               default='iXsystems_TRUENAS_Storage',
                help='Backend Storage Controller Name'), 
     cfg.StrOpt('ixsystems_vendor_name',
                default='iXsystem',
