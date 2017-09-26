@@ -63,7 +63,7 @@ Here is an example configuration:
  [ixsystems-iscsi]
  iscsi_helper = tgtadm
  volume_dd_blocksize = 512
- volume_driver = cinder.volume.drivers.ixsystems.iscsi.TrueNASISCSIDriver
+ volume_driver = cinder.volume.drivers.ixsystems.iscsi.FREENASISCSIDriver
  ixsystems_login = root
  ixsystems_password = thisisdummypassword
  ixsystems_server_hostname = 10.3.1.81
