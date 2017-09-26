@@ -3,8 +3,8 @@
 # Copyright (c) 2016 iXsystems
 from oslo_log import log as logging
 from cinder import exception
-from cinder.volume.drivers.ixsystems.truenasapi import TrueNASApiError
-from cinder.volume.drivers.ixsystems.truenasapi import TrueNASServer
+from cinder.volume.drivers.ixsystems.freenasapi import FreeNASApiError
+from cinder.volume.drivers.ixsystems.freenasapi import FreeNASServer
 from oslo_config import cfg
 import os
 from cinder.volume.drivers.ixsystems import utils as ix_utils
@@ -34,29 +34,29 @@ class TrueNASCommon(object):
 
     def _create_handle(self, **kwargs):
         """Instantiate handle (client) for API communication with
-            iXsystems TRUENAS server
+            iXsystems FREENAS server
         """
         host_system = kwargs['hostname']
-        LOG.debug('Using iXsystems TRUENAS server: %s', host_system)
-        self.handle = TrueNASServer(host=host_system,
+        LOG.debug('Using iXsystems FREENAS server: %s', host_system)
+        self.handle = FreeNASServer(host=host_system,
                                  port=kwargs['port'],
                                  username=kwargs['login'],
                                  password=kwargs['password'],
                                  api_version=kwargs['api_version'],
                                  transport_type=kwargs['transport_type'],
-                                 style=TrueNASServer.STYLE_LOGIN_PASSWORD)
+                                 style=FreeNASServer.STYLE_LOGIN_PASSWORD)
         if not self.handle:
-            raise TrueNASApiError("Failed to create handle for TRUENAS server")
+            raise FreeNASApiError("Failed to create handle for FREENAS server")    
 
     def _check_flags(self):
-        """Check if any required iXsystems TRUENAS configuration flag is missing."""
+        """Check if any required iXsystems FREENAS configuration flag is missing."""
         for flag in self.required_flags:
             if not getattr(self.configuration, flag, None):
                 print "missing flag :", flag
                 raise exception.CinderException(_('%s is not set') % flag)
 
     def _do_custom_setup(self):
-        """Setup iXsystems TRUENAS driver."""
+        """Setup iXsystems FREENAS driver."""
         self._create_handle(hostname=self.configuration.ixsystems_server_hostname,
                             port=self.configuration.ixsystems_server_port,
                             login=self.configuration.ixsystems_login,
@@ -65,7 +65,7 @@ class TrueNASCommon(object):
                             transport_type=
                             self.configuration.ixsystems_transport_type)
         if not self.handle:
-                raise TrueNASApiError("Failed to create handle for TRUENAS server")
+                raise FreeNASApiError("Failed to create handle for FREENAS server")
 
     def _create_volume(self, name, size):
         """Creates a volume of specified size
@@ -74,15 +74,15 @@ class TrueNASCommon(object):
         params['name'] = name
         params['volsize'] = str(size) + 'G'
         jparams = json.dumps(params)
-        request_urn = ('%s/%s/%s/') % (TrueNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool, TrueNASServer.ZVOLS)
+        request_urn = ('%s/%s/%s/') % (FreeNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool, FreeNASServer.ZVOLS)
         LOG.debug('_create_volume params : %s', params)
         LOG.debug('_create_volume urn : %s', request_urn)
-        ret = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND,
+        ret = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                          request_urn, jparams)
         LOG.debug('_create_volume response : %s', json.dumps(ret))
-        if ret['status'] != TrueNASServer.STATUS_OK:
+        if ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while creating volume: %s' % ret['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
 
 
@@ -92,18 +92,18 @@ class TrueNASCommon(object):
 
         LOG.debug('_target_to_extent target id : %s extend id : %s', target_id, extent_id)
 
-        request_urn = ('%s/') % (TrueNASServer.REST_API_TARGET_TO_EXTENT)
+        request_urn = ('%s/') % (FreeNASServer.REST_API_TARGET_TO_EXTENT)
         params = {}
         params['iscsi_target'] = target_id
         params['iscsi_extent'] = extent_id
 
         LOG.debug('_create_target_to_extent params : %s', json.dumps(params))
 
-        tgt_ext = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND, request_urn, json.dumps(params))
+        tgt_ext = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND, request_urn, json.dumps(params))
 
-        if tgt_ext['status'] != TrueNASServer.STATUS_OK:
+        if tgt_ext['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while creating relation between target and extent: %s' % tgt_ext['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
     def _create_target_group(self, target_id):
 
@@ -112,15 +112,15 @@ class TrueNASCommon(object):
         tgt_grp_params["iscsi_target_portalgroup"] = self.configuration.ixsystems_portal_id  #TODO: Decide to create portal or not
         tgt_grp_params["iscsi_target_initiatorgroup"] = self.configuration.ixsystems_initiator_id #TODO: Decide to create initiator or not
 
-        tgt_request_urn = ('%s/') % (TrueNASServer.REST_API_TARGET_GROUP)
-        tgtgrp = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND,
+        tgt_request_urn = ('%s/') % (FreeNASServer.REST_API_TARGET_GROUP)
+        tgtgrp = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                          tgt_request_urn, json.dumps(tgt_grp_params))
 
         LOG.debug('_create_target_group response : %s', json.dumps(tgtgrp))
 
-        if tgtgrp['status'] != TrueNASServer.STATUS_OK:
+        if tgtgrp['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while creating iscsi target: %s' % tgtgrp['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
     def _create_target(self, name):
 
@@ -128,14 +128,14 @@ class TrueNASCommon(object):
         tgt_params["iscsi_target_name"] = name
 
         LOG.debug('_create_target params : %s', json.dumps(tgt_params))
-        request_urn = ('%s/') % (TrueNASServer.REST_API_TARGET)
-        target = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND,
+        request_urn = ('%s/') % (FreeNASServer.REST_API_TARGET)
+        target = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                          request_urn, json.dumps(tgt_params))
         LOG.debug('_create_target response : %s', json.dumps(target))
 
-        if target['status'] != TrueNASServer.STATUS_OK:
+        if target['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while creating iscsi target: %s' % target['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
         target_id = json.loads(target['response'])['id']
         self._create_target_group(target_id)
@@ -153,26 +153,26 @@ class TrueNASCommon(object):
         mnt_point = ('zvol/%s/%s') % (self.configuration.ixsystems_datastore_pool, volume_name)
         ext_params['iscsi_target_extent_disk'] = mnt_point
 
-        request_urn = ('%s/') % (TrueNASServer.REST_API_EXTENT)
-        extent = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND,
+        request_urn = ('%s/') % (FreeNASServer.REST_API_EXTENT)
+        extent = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                          request_urn, json.dumps(ext_params))
 
         LOG.debug('_create_iscsitarget extent response : %s', json.dumps(extent))
 
-        if extent['status'] != TrueNASServer.STATUS_OK:
+        if extent['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while creating iscsi target extent: %s' % extent['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
         return json.loads(extent['response'])['id']
 
     def get_iscsitarget_id(self, name):
         """get iscsi target id from target name
         """
-        request_urn = ('%s/') % (TrueNASServer.REST_API_TARGET)
-        ret = self.handle.invoke_command(TrueNASServer.SELECT_COMMAND, request_urn, None)
-        if ret['status'] != TrueNASServer.STATUS_OK:
+        request_urn = ('%s/') % (FreeNASServer.REST_API_TARGET)
+        ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND, request_urn, None)
+        if ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while deleting iscsi target: %s' % ret['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
         resp = json.loads(ret['response'])
 
@@ -184,11 +184,11 @@ class TrueNASCommon(object):
     def get_tgt_ext_id(self, name):
         """Get target-extent mapping id from target name.
         """
-        request_urn = ('%s/') % (TrueNASServer.REST_API_TARGET_TO_EXTENT)
-        ret = self.handle.invoke_command(TrueNASServer.SELECT_COMMAND, request_urn, None)
-        if ret['status'] != TrueNASServer.STATUS_OK:
+        request_urn = ('%s/') % (FreeNASServer.REST_API_TARGET_TO_EXTENT)
+        ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND, request_urn, None)
+        if ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while deleting iscsi target: %s' % ret['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
         resp = json.loads(ret['response'])
 
@@ -201,11 +201,11 @@ class TrueNASCommon(object):
     def get_extent_id(self, name):
         """Get Extent ID from Extent Name
         """
-        request_urn = ('%s/') % (TrueNASServer.REST_API_EXTENT)
-        ret = self.handle.invoke_command(TrueNASServer.SELECT_COMMAND, request_urn, None)
-        if ret['status'] != TrueNASServer.STATUS_OK:
+        request_urn = ('%s/') % (FreeNASServer.REST_API_EXTENT)
+        ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND, request_urn, None)
+        if ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while deleting iscsi target: %s' % ret['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
         resp = json.loads(ret['response'])
 
@@ -234,25 +234,25 @@ class TrueNASCommon(object):
     
     def delete_target(self, target_id):
         if target_id:
-            request_urn = ('%s/%s/') % (TrueNASServer.REST_API_TARGET, target_id)
+            request_urn = ('%s/%s/') % (FreeNASServer.REST_API_TARGET, target_id)
             LOG.debug('_delete_iscsitarget urn : %s', request_urn)
-            ret = self.handle.invoke_command(TrueNASServer.DELETE_COMMAND,
+            ret = self.handle.invoke_command(FreeNASServer.DELETE_COMMAND,
                                          request_urn, None)
-            if ret['status'] != TrueNASServer.STATUS_OK:
+            if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = ('Error while deleting iscsi target: %s' % ret['response'])
-                raise TrueNASApiError('Unexpected error', msg)
+                raise FreeNASApiError('Unexpected error', msg)
 
     def delete_extent(self, extent_id):
 
         if extent_id:
-            request_urn = ('%s/%s/') % (TrueNASServer.REST_API_EXTENT, extent_id)
+            request_urn = ('%s/%s/') % (FreeNASServer.REST_API_EXTENT, extent_id)
             LOG.debug('delete_extent urn : %s', request_urn)
-            ret = self.handle.invoke_command(TrueNASServer.DELETE_COMMAND,
+            ret = self.handle.invoke_command(FreeNASServer.DELETE_COMMAND,
                                          request_urn, None)
             
-            if ret['status'] != TrueNASServer.STATUS_OK:
+            if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = ('Error while deleting iscsi extent: %s' % ret['response'])
-                raise TrueNASApiError('Unexpected error', msg)
+                raise FreeNASApiError('Unexpected error', msg)
 
     def _delete_iscsitarget(self, name):
         """Deletes specified iSCSI target
@@ -270,14 +270,14 @@ class TrueNASCommon(object):
     def _delete_volume(self, name):
         """Deletes specified volume
         """
-        request_urn = ('%s/%s/%s/%s/') % (TrueNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool, TrueNASServer.ZVOLS, name)
+        request_urn = ('%s/%s/%s/%s/') % (FreeNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool, FreeNASServer.ZVOLS, name)
         LOG.debug('_delete_volume urn : %s', request_urn)
 
-        ret = self.handle.invoke_command(TrueNASServer.DELETE_COMMAND,
+        ret = self.handle.invoke_command(FreeNASServer.DELETE_COMMAND,
                                          request_urn, None)
-        if ret['status'] != TrueNASServer.STATUS_OK:
+        if ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while deleting volume: %s' % ret['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
     def _create_snapshot(self, name, volume_name):
         """Creates a snapshot of specified volume."""
@@ -285,29 +285,29 @@ class TrueNASCommon(object):
         args['dataset'] = ('%s/%s')  % (self.configuration.ixsystems_datastore_pool, volume_name)
         args['name'] =  name
         jargs = json.dumps(args)
-        request_urn = ('%s/') % (TrueNASServer.REST_API_SNAPSHOT)
+        request_urn = ('%s/') % (FreeNASServer.REST_API_SNAPSHOT)
         LOG.debug('_create_snapshot urn : %s', request_urn)
 
         try:
-            ret = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND,
+            ret = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                              request_urn, jargs)
-            if ret['status'] != TrueNASServer.STATUS_OK:
+            if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = ('Error while creating snapshot: %s' % ret['response'])
-                raise TrueNASApiError('Unexpected error', msg)
+                raise FreeNASApiError('Unexpected error', msg)
         except Exception as e:
-            raise TrueNASApiError('Unexpected error', e)
+            raise FreeNASApiError('Unexpected error', e)
 
     def _delete_snapshot(self, name, volume_name):
         """Delets a snapshot of specified volume."""
-        request_urn = ('%s/%s/%s@%s/') % (TrueNASServer.REST_API_SNAPSHOT, self.configuration.ixsystems_datastore_pool, volume_name, name)
+        request_urn = ('%s/%s/%s@%s/') % (FreeNASServer.REST_API_SNAPSHOT, self.configuration.ixsystems_datastore_pool, volume_name, name)
         try:
-            ret = self.handle.invoke_command(TrueNASServer.DELETE_COMMAND,
+            ret = self.handle.invoke_command(FreeNASServer.DELETE_COMMAND,
                                              request_urn, None)
-            if ret['status'] != TrueNASServer.STATUS_OK:
+            if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = ('Error while deleting snapshot: %s' % ret['response'])
-                raise TrueNASApiError('Unexpected error', msg)
+                raise FreeNASApiError('Unexpected error', msg)
         except Exception as e:
-            raise TrueNASApiError('Unexpected error', e)
+            raise FreeNASApiError('Unexpected error', e)
 
     def _create_volume_from_snapshot(self, name, snapshot_name, snap_zvol_name):
         "creates a volume from snapshot"
@@ -317,16 +317,16 @@ class TrueNASCommon(object):
         args['name'] = ('%s/%s')  % (self.configuration.ixsystems_datastore_pool, name)
         jargs = json.dumps(args)
 
-        request_urn = ('%s/%s/%s@%s/%s/') % (TrueNASServer.REST_API_SNAPSHOT, self.configuration.ixsystems_datastore_pool, snap_zvol_name, snapshot_name, TrueNASServer.CLONE)
+        request_urn = ('%s/%s/%s@%s/%s/') % (FreeNASServer.REST_API_SNAPSHOT, self.configuration.ixsystems_datastore_pool, snap_zvol_name, snapshot_name, FreeNASServer.CLONE)
 
         try:
-            ret = self.handle.invoke_command(TrueNASServer.CREATE_COMMAND,
+            ret = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                              request_urn, jargs)
-            if ret['status'] != TrueNASServer.STATUS_OK:
+            if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = ('Error while creating snapshot: %s' % ret['response'])
-                raise TrueNASApiError('Unexpected error', msg)
+                raise FreeNASApiError('Unexpected error', msg)
         except Exception as e:
-            raise TrueNASApiError('Unexpected error', e)
+            raise FreeNASApiError('Unexpected error', e)
 
 
     def _update_volume_stats(self):
@@ -335,10 +335,10 @@ class TrueNASCommon(object):
         """
         LOG.debug('_update_volume_stats')
 
-        request_urn = ('%s/%s/') % (TrueNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool)
+        request_urn = ('%s/%s/') % (FreeNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool)
 
         LOG.debug('request_urn : %s', request_urn)
-        ret = self.handle.invoke_command(TrueNASServer.SELECT_COMMAND,
+        ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND,
                                          request_urn, None)
         LOG.debug("_update_volume Response : %s", json.dumps(ret))
 
@@ -375,25 +375,25 @@ class TrueNASCommon(object):
         params = {}
         params['volsize'] = str(new_size) + 'G'
         jparams = json.dumps(params)
-        request_urn = ('%s/%s/%s/%s/') % (TrueNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool, TrueNASServer.ZVOLS, name)
-        ret = self.handle.invoke_command(TrueNASServer.UPDATE_COMMAND,
+        request_urn = ('%s/%s/%s/%s/') % (FreeNASServer.REST_API_VOLUME, self.configuration.ixsystems_datastore_pool, FreeNASServer.ZVOLS, name)
+        ret = self.handle.invoke_command(FreeNASServer.UPDATE_COMMAND,
                                          request_urn, jparams)
-        if ret['status'] != TrueNASServer.STATUS_OK:
+        if ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while extending volume: %s' % ret['response'])
-            raise TrueNASApiError('Unexpected error', msg)
+            raise FreeNASApiError('Unexpected error', msg)
 
 
     def _create_export(self, volume_name):
-        truenas_volume = ix_utils.generate_truenas_volume_name(volume_name, self.configuration.ixsystems_iqn_prefix)
-        if truenas_volume is None:
-            LOG.error(_('Error in exporting TRUENAS volume!'))
+        freenas_volume = ix_utils.generate_freenas_volume_name(volume_name, self.configuration.ixsystems_iqn_prefix)
+        if freenas_volume is None:
+            LOG.error(_('Error in exporting FREENAS volume!'))
             handle = None
         else:
             handle = "%s:%s,%s %s" % \
                      (self.configuration.ixsystems_server_hostname,
                       self.configuration.ixsystems_server_iscsi_port,
-                      truenas_volume['target'],
-                      truenas_volume['iqn'])
+                      freenas_volume['target'],
+                      freenas_volume['iqn'])
 
         LOG.debug('provider_location: %s', handle)
         return handle
