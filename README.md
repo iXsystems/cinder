@@ -10,7 +10,7 @@ The Cinder driver uses:
 Requirements
 ============
 
-1. A system running FreeNAS 9.3 / 9.10 with at least 8 Gb of memory and a minimum 20 Gb disk.
+1. A system running TrueNAS with at least 8 Gb of memory and a minimum 20 Gb disk.
 2. Another system running Devstack Kilo Release with this configuration:
 
    Minimal System Requirements:
