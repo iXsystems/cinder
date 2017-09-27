@@ -99,6 +99,7 @@ After the first reboot or manual reset of the Cinder service, it can be more eas
 
 `/usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf & echo $! >/opt/stack/status/stack/c-vol.pid; fg || echo "c-vol failed to start" | tee "/opt/stack/status/stack/c-vol.failure"`
 
+After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. Now the iXsystems Cinder driver is functional in the OpenStack Web Interface.
 
 Using the iXsystems Cinder Driver
 =================================
@@ -113,6 +114,7 @@ Here are some examples commands that use the iXsystems Cinder driver:
 
   `$ cinder create --name TestVolume 2`
 
+The `Projects -> Volumes` and `Admin -> Volumes` sections of the web interface integrate Cinder functionality directly in the interface options using the `ixsystems-iscsi` Volume Type.
 
 About Source Code
 =================
