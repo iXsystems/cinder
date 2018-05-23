@@ -1,27 +1,26 @@
-Cinder Driver for iXsystems
-===========================
+FreeNAS Cinder Driver
+=====================
 
-This repo contains driver scripts for the OpenStack block storage manipulation project called OpenStack Cinder.
-The Cinder driver is used only with TrueNAS.
+This repository contains driver scripts for FreeNAS interaction with OpenStack Cinder for block storage manipulation.
 
 
 Requirements
 ============
 
-1. A system running TrueNAS with at least 8 Gb of memory and a minimum 20 Gib disk.
+1. A FreeNAS system with at least 8 Gb of memory and a minimum 20 GiB disk.
 2. Another system running the Devstack Newton Release with this configuration:
 
    Minimal System Requirements:
 
    * RAM : 4 Gb
    * CPU : 4 Cores
-   * Disk : 40 Gib
+   * Disk : 40 GiB
 
 
 Getting Started
 ===============
 
-Here are the initial steps to download and install the iXsystems Cinder driver on the system with Devstack Newton:
+Download and install the FreeNAS Cinder driver on the system running Devstack Newton:
 
 ```
 % sudo -s
@@ -32,18 +31,16 @@ Here are the initial steps to download and install the iXsystems Cinder driver o
 % cp -R ./cinder/driver/ixsystems/ /opt/stack/cinder/cinder/volume/drivers/
 ```
 
-Now the Cinder driver needs to be configured.
+Configure the Cinder driver. Open **/etc/cinder/cinder.conf** in an editor to both *edit* and *add* parameters.
 
-Open **/etc/cinder/cinder.conf** in an editor to both *edit* and *add* parameters, then restart the `cinder service` to enable the changes:
-
-**Edits**: Edit these lines in **cinder.conf**:
+**Edit these lines**:
 
  ```
  default_volume_type = ixsystems-iscsi
  enabled_backends = ixsystems-iscsi, lvmdriver-1
  ```
 
-**Additions**: Add these parameters and the appropriate values in **cinder.conf**:
+**Add these parameters and the appropriate values**:
 
  ```
  [ixsystems-iscsi]
@@ -77,11 +74,9 @@ Here is an example configuration:
  ixsystems_storage_protocol = iscsi
  ```
 
-Now restart the Cinder service. The simplest method is to reboot the Devstack Newton system.
-Alternatively, the Cinder service can be restarted manually.
+Now restart the Cinder service to enable the changes. The simplest method is to reboot the Devstack Newton system.
 
-To reset the Cinder service manually without rebooting, use the `screen` command (documentation: https://www.gnu.org/software/screen/manual/screen.html).
-Attach to the devstack screens by following these steps:
+Alternatively, to restart the Cinder service manually without rebooting, use the `screen` command (documentation: https://www.gnu.org/software/screen/manual/screen.html). Attach to the devstack screens by following these steps:
 
 ```
 % su -s
@@ -95,16 +90,16 @@ Switch to the `c-vol` screen by holding `Ctrl` and pressing `A` and `P` in rapid
 Press the `Up Arrow` button then `Enter` to restart the Cinder service.
 The edited **cinder.conf** is read by the Cinder service as it restarts.
 
-After the first reboot or manual reset of the Cinder service, it can be more easily restarted with this command:
+After the initial reboot or manual reset of the Cinder service, it can be easily restarted with this command:
 
 `/usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf & echo $! >/opt/stack/status/stack/c-vol.pid; fg || echo "c-vol failed to start" | tee "/opt/stack/status/stack/c-vol.failure"`
 
-After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. Now the iXsystems Cinder driver is functional in the OpenStack Web Interface.
+After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. Now the FreeNAS Cinder driver is functional in the OpenStack Web Interface.
 
-Using the iXsystems Cinder Driver
-=================================
+Using the Cinder Driver
+=======================
 
-Here are some examples commands that use the iXsystems Cinder driver:
+Here are some examples commands:
 
 * Create a volume:
 
@@ -119,8 +114,8 @@ The `Projects -> Volumes` and `Admin -> Volumes` sections of the web interface i
 About Source Code
 =================
 
-The iXsystems Cinder driver uses several scripts:
+The FreeNAS Cinder driver uses several scripts:
 
-* **iscsi.py**: Cinder APIs are defined here. Examples: `create_volume`, `delete_volume`, etc.
-* **truenasapi.py**: The REST API call routine is defined here and it contains all necessary methods.
-* **options.py**: Defines the default TrueNAS configuration parameters if not fetched from the **cinder.conf** file.
+* **iscsi.py**: Defines the Cinder APIs, including `create_volume` and `delete_volume`.
+* **truenasapi.py**: Defines the REST API call routine and methods.
+* **options.py**: Defines the default configuration parameters not fetched from the **cinder.conf** file.
