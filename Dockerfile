@@ -3,7 +3,7 @@
 # Please edit the release and tag variables to match your enviroment       #
 # See http://tripleo.org/install/containers_deployment/3rd_party.html      #
 ############################################################################
-FROM 192.168.24.1:8787/tripleo$RELEASE/centos-binary-cinder-volume:$CONTAINERTAG
+FROM $LISTENING_IP_ADDRESS:8787/tripleo$RELEASE/centos-binary-cinder-volume:$CONTAINERTAG
 
 # switch to root and install a custom RPM, etc.
 USER root
