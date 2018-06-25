@@ -1,0 +1,38 @@
+#################################################################################################################
+# This template is used in conjunction with the dockerfile provided to enable the FreeNAS driver                #
+# to work with Tripleo. Please Edit the below items with comments next to them, and load this template          #
+# This has only been tested on RDO Queens                                                                       #
+#################################################################################################################
+parameter_defaults:
+  CinderEnableIscsiBackend: false
+  CinderEnableRbdBackend: false
+  CinderEnableNfsBackend: false
+  ExtraConfig:
+    cinder::config::cinder_config:
+        freenas/backend_host:
+                value: hostgroup    
+        freenas/volume_driver:
+                value: cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver
+        freenas/iscsi_helper:
+                value: tgtadm
+        freenas/volume_dd_blocksize:
+                value: 512
+        freenas/ixsystems_login:
+                value: freenas_login #Enter your username
+        freenas/ixsystems_password:
+                value: '"YOURPASSWORDHERE"' #Enter your password, and both sets of quotes are required
+        freenas/ixsystems_server_hostname:
+                value: freenas_IP #Enter your freenas IP address here
+        freenas/ixsystems_volume_backend_name:
+                value: freenas
+        freenas/ixsystems_iqn_prefix:
+                value: iqn.2015-01.com.freenas.org # Enter your iscsi Base Name here
+        freenas/ixsystems_datastore_pool:
+                value: tank # This is the root of where you want your zvols to be created
+        freenas/ixsystems_vendor_name:
+                value: iXsystems
+        freenas/ixsystems_storage_protocol:
+                value: iscsi
+        freenas/image_volume_cache_enabled:
+                value: False  #This ensures if you do use multiple backends, that cacheing doesn't occur on freenas              
+    cinder_user_enabled_backends: ['freenas']
