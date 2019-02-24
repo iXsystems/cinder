@@ -96,6 +96,7 @@ class TrueNASCommon(object):
         params = {}
         params['iscsi_target'] = target_id
         params['iscsi_extent'] = extent_id
+        params['iscsi_lunid'] = 0
 
         LOG.debug('_create_target_to_extent params : %s', json.dumps(params))
 
