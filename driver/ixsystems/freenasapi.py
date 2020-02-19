@@ -9,8 +9,9 @@ Contains classes required to issue REST based api calls to FREENAS system.
 
 #from cinder.openstack.common import jsonutils
 from oslo_log import log as logging
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import simplejson as json
+import base64
 
 LOG = logging.getLogger(__name__)
 
@@ -118,14 +119,16 @@ class FreeNASServer(object):
         """Creates urllib2.Request object."""
         if not self._username or not self._password:
             raise ValueError("Invalid username/password combination")
-        auth = ('%s:%s' % (self._username,
-                           self._password)).encode('base64')[:-1]
+        loginstring = ("%s:%s" % (self._username, self._password))
+        bloginstring = bytes(loginstring, encoding='utf8')
+        bauth = base64.b64encode(bloginstring)
+        auth = bauth.decode("utf8")
         headers = {'Content-Type': 'application/json',
                    'Authorization': 'Basic %s' % (auth,)}
         url = self.get_url() + request_d
         LOG.debug('url : %s', url)
         LOG.debug('param list : %s', param_list)
-        return urllib2.Request(url, param_list, headers)
+        return urllib.request.Request(url, param_list, headers)
 
     def _get_method(self, command_d):
         """Select http method based on FREENAS command."""
@@ -166,9 +169,9 @@ class FreeNASServer(object):
     def _get_error_info(self, err):
         """Collects error response message."""
         self.COMMAND_RESPONSE['status'] = self.STATUS_ERROR
-        if isinstance(err, urllib2.HTTPError):
+        if isinstance(err, urllib.error.HTTPError):
             self.COMMAND_RESPONSE['response'] = '%d:%s' % (err.code, err.msg)
-        elif isinstance(err, urllib2.URLError):
+        elif isinstance(err, urllib.error.URLError):
             self.COMMAND_RESPONSE['response'] = '%s:%s' % \
                                                 (str(err.reason.errno),
                                                  err.reason.strerror)
@@ -185,10 +188,10 @@ class FreeNASServer(object):
             raise FreeNASApiError("Invalid FREENAS command")
         request.get_method = lambda: method
         try:
-            response_d = urllib2.urlopen(request)
+            response_d = urllib.request.urlopen(request)
             response = self._parse_result(command_d, response_d)
             LOG.debug("invoke_command : response for request %s : %s", request_d, json.dumps(response))
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             error_d = self._get_error_info(e)
             if error_d:
                 return error_d
