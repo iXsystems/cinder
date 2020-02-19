@@ -20,7 +20,7 @@ from cinder.volume.drivers.ixsystems.options import ixsystems_connection_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_provisioning_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_transport_opts
 from cinder.volume.drivers.ixsystems import common
-from cinder.volume import utils as volume_utils
+from cinder.volume import volume_utils
 from cinder.volume.drivers.ixsystems import utils as ix_utils
 from cinder.i18n import _
 from lxml import etree
