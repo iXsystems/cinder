@@ -40,7 +40,7 @@ CONF.register_opts(ixsystems_provisioning_opts)
 class FreeNASISCSIDriver(driver.ISCSIDriver):
     """FREENAS iSCSI volume driver."""
 
-    VERSION = "1.0.1"
+    VERSION = "2.0.0"
     IGROUP_PREFIX = 'openstack-'
     
     required_flags = ['ixsystems_transport_type', 'ixsystems_login',
