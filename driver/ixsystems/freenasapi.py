@@ -19,7 +19,7 @@ LOG = logging.getLogger(__name__)
 class FreeNASServer(object):
     """FreeNAS server connection logic."""
 
-    FREENAS_API_VERSION = "v1"
+    FREENAS_API_VERSION = "v2.0"
     TRANSPORT_TYPE = 'http'
     STYLE_LOGIN_PASSWORD = 'basic_auth'
 
@@ -30,12 +30,12 @@ class FreeNASServer(object):
     DELETE_COMMAND = 'delete'
 
     # FREENAS API query tables
-    REST_API_VOLUME = "/storage/volume"
-    REST_API_EXTENT = "/services/iscsi/extent"
-    REST_API_TARGET = "/services/iscsi/target"
-    REST_API_TARGET_TO_EXTENT = "/services/iscsi/targettoextent"
-    REST_API_TARGET_GROUP = "/services/iscsi/targetgroup/"
-    REST_API_SNAPSHOT = "/storage/snapshot"
+    REST_API_VOLUME = "/pool/dataset"
+    REST_API_EXTENT = "/iscsi/extent"
+    REST_API_TARGET = "/iscsi/target"
+    REST_API_TARGET_TO_EXTENT = "/iscsi/targetextent"
+    # REST_API_TARGET_GROUP = "/services/iscsi/targetgroup/"
+    REST_API_SNAPSHOT = "/zfs/snapshot"
     ZVOLS = "zvols"
     TARGET_ID = -1 #We assume invalid id to begin with
     STORAGE_TABLE = "/storage"
@@ -126,7 +126,7 @@ class FreeNASServer(object):
         headers = {'Content-Type': 'application/json',
                    'Authorization': 'Basic %s' % (auth,)}
         url = self.get_url() + request_d
-        LOG.debug('url : %s', url)
+        LOG.debug('url : %s, request: %s', url, request_d)
         LOG.debug('param list : %s', param_list)
         return urllib.request.Request(url, param_list, headers)
 
@@ -192,6 +192,8 @@ class FreeNASServer(object):
             response = self._parse_result(command_d, response_d)
             LOG.debug("invoke_command : response for request %s : %s", request_d, json.dumps(response))
         except urllib.error.HTTPError as e:
+            # LOG the error message received from FreeNAS/TrueNAS: https://github.com/iXsystems/cinder/issues/11
+            LOG.info('Error returned from server: "%s"', json.loads(e.read().decode('utf8'))['message'])
             error_d = self._get_error_info(e)
             if error_d:
                 return error_d
