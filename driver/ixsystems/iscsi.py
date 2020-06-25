@@ -40,17 +40,18 @@ CONF.register_opts(ixsystems_provisioning_opts)
 class FreeNASISCSIDriver(driver.ISCSIDriver):
     """FREENAS iSCSI volume driver."""
 
-    VERSION = "1.0.0"
+    VERSION = "2.0.0"
     IGROUP_PREFIX = 'openstack-'
     
     required_flags = ['ixsystems_transport_type', 'ixsystems_login',
                       'ixsystems_password', 'ixsystems_server_hostname',
                       'ixsystems_server_port', 'ixsystems_server_iscsi_port',
                       'ixsystems_volume_backend_name', 'ixsystems_vendor_name', 'ixsystems_storage_protocol',
-                      'ixsystems_datastore_pool', 'ixsystems_iqn_prefix', ]
+                      'ixsystems_datastore_pool', 'ixsystems_dataset_path', 'ixsystems_iqn_prefix', ]
 
     def __init__(self, *args, **kwargs):
         """Initialize FreeNASISCSIDriver Class."""
+        """ Set logging to debug """
         LOG.info('iXsystems: Init Cinder Driver')
         super(FreeNASISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(ixsystems_connection_opts)
@@ -177,7 +178,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
-        LOG.info('iXsystems Craete Volume From Snapshot')
+        LOG.info('iXsystems Create Volume From Snapshot')
         LOG.info('create_volume_from_snapshot %s', snapshot['name'])
 
         existing_vol = ix_utils.generate_freenas_volume_name(snapshot['volume_name'],self.configuration.ixsystems_iqn_prefix)
@@ -202,7 +203,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a volume from source volume."""
-        LOG.info('iXsystems Create Colened Volume')
+        LOG.info('iXsystems Create Cloned Volume')
         LOG.info('create_cloned_volume: %s', src_vref['id'])
 
         context = None
@@ -211,7 +212,9 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         
         self.create_snapshot(temp_snapshot)
         self.create_volume_from_snapshot(volume, temp_snapshot)
-        self.delete_snapshot(temp_snapshot)
+        # self.delete_snapshot(temp_snapshot)
+        # with API v2.0 this causes FreeNAS error "snapshot has dependent clones".  Cannot delete while volume is active.
+        # Instead, added check and deletion of orphaned dependent clones in common._delete_volume()
 
     def extend_volume(self, volume, new_size):
         """Driver entry point to extend an existing volumes size."""
