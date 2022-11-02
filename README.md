@@ -3,7 +3,7 @@ FreeNAS Cinder Driver
 
 This repository contains driver scripts for FreeNAS interaction with OpenStack Cinder for block storage manipulation.
 
-Warning
+WARNING
 ==================
 
 This driver is not actively maintained by iXsystems and should be considered experimental. Use at your own risk!
