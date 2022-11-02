@@ -131,6 +131,8 @@ Additional Notes
 and the key `ixsystems_server_hostname` in `cinder.conf` needs to be set to the FQDN referenced by the certificate.  This issue needs
 more investigation.
 
+* Users have reported that scaling beyond 80 LUNS is possible when setting the `kern.cam.ctl.max_ports=512` tunable in TrueNAS 13.
+
 About Source Code
 =================
 
