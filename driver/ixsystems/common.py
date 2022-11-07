@@ -420,6 +420,7 @@ class TrueNASCommon(object):
                 LOG.debug('_update_volume_stats start /system/version response: %s',versionret)
                 versionresult = json.loads(versionret['response'])
                 LOG.debug('_update_volume_stats /system/version response : %s', versionresult)
+                LOG.debug('_update_volume_stats _get_system_version return : %s', str(versionresult))
             except Exception as e:
                 raise FreeNASApiError('Unexpected error', e)
             finally:
@@ -427,13 +428,36 @@ class TrueNASCommon(object):
             
     def _update_volume_stats(self):
         data = {}
-        # Implementation for TrueNAS 12.0 upwards on API V2.0
-        # If user are connecting to FreeNAS report error
+        # Implementation for Freenas on API V1.0
+        # Truenas core and scale use API v2.0 
         if self._system_version().find("FreeNAS")>=0:
-            LOG.error("FreeNAS is no longer support by this version of cinder driver.")
-            raise FreeNASApiError('Version not supported','FreeNAS is no longer support by this version of cinder driver.')
+            self.handle.set_api_version('v1.0')
+            request_urn = ('%s/%s/') % (
+                '/storage/volume',
+                self.configuration.ixsystems_datastore_pool)
+            LOG.debug('_update_volume_stats request_urn : %s', request_urn)
+            ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND,
+                                            request_urn, None)
+            LOG.debug("_update_volume_stats response : %s", json.dumps(ret))
+            data = {}
+            data["volume_backend_name"] = self.backend_name
+            data["vendor_name"] = self.vendor_name
+            data["driver_version"] = self.VERSION
+            data["storage_protocol"] = self.storage_protocol
+            data['total_capacity_gb'] = ix_utils.get_size_in_gb(
+                json.loads(ret['response'])['avail'] +
+                json.loads(ret['response'])['used'])
+            data['free_capacity_gb'] = ix_utils.get_size_in_gb(
+                json.loads(ret['response'])['avail'])
+            data['reserved_percentage'] = (
+                self.configuration.ixsystems_reserved_percentage)
+            data['reserved_percentage'] = 0
+            data['QoS_support'] = False            
+            self.handle.set_api_version('v2.0')
+
         else:
             """Retrieve dataset available and used using API 2.0 /pool/dataset/id/$id instead of API 1.0. This enable support for Truenas core/Truenas scale.
+
             REST API: $ GET /pool/dataset/id/$id retrive available and used parsed value for id matching config file 'ixsystems_dataset_path'
             """        
             self.handle.set_api_version('v2.0')
