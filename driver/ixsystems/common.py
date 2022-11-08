@@ -411,9 +411,12 @@ class TrueNASCommon(object):
 
     def _system_version(self):
             LOG.debug('_update_volume_stats start /system/version request')
+            # Use API v2.0 /system/version to detect nasversion
+            # API v2.0 /system/version available for FreeNAS 11.x TrueNAS 12.x TrueNAS 13.x TrueNAS Scale 22.x
             request_urn = ("/system/version")
             self.handle.set_api_version('v2.0')
-            versionresult=""
+            # For legacy verion that does not support API v2.0 /system/version return fallback value "VersionNotFound"
+            versionresult="VersionNotFound"
             try:
                 versionret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND,
                                                 request_urn, None)
@@ -427,9 +430,10 @@ class TrueNASCommon(object):
             
     def _update_volume_stats(self):
         data = {}
+        nasversion = self._system_version()
         # Implementation for TrueNAS 12.0 upwards on API V2.0
         # If user are connecting to FreeNAS report error
-        if self._system_version().find("FreeNAS")>=0:
+        if nasversion.find("FreeNAS")>=0 or nasversion=="VersionNotFound" :
             LOG.error("FreeNAS is no longer support by this version of cinder driver.")
             raise FreeNASApiError('Version not supported','FreeNAS is no longer support by this version of cinder driver.')
         else:
