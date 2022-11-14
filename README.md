@@ -1,24 +1,24 @@
-FreeNAS Cinder Driver
+TrueNAS Cinder Driver
 =====================
 
-This repository contains driver scripts for FreeNAS interaction with OpenStack Cinder for block storage manipulation.
+This repository contains driver scripts for TrueNAS version >= 12.x interaction with OpenStack Cinder for block storage manipulation.
 
 WARNING
 ==================
 
-This driver is not actively maintained by iXsystems and should be considered experimental. Use at your own risk!
+This driver should be considered experimental. Use at your own risk!
 
 Requirements
 ============
 
-1. A FreeNAS system with at least 8 Gb of memory and a minimum 20 GiB disk.  Suggested version >= 11.3 to use API v2.0
+1. A TrueNAS system with at least 8 Gb of memory and a minimum 20 GiB disk.  Suggested version >= 12.x to use API v2.0
 2. Another system running either DevStack (Train or higher) or an OpenStack storage node.
 3. This driver is now upgraded to Python 3, so is usable by OpenStack versions from Train on.  
 
 Getting Started with Devstack
 =============================
 
-Download and install the FreeNAS Cinder driver on the system running Devstack Newton:
+Download and install the TrueNAS Cinder driver on the system running Devstack Newton or newer release:
 
 ```
 % sudo -s
@@ -45,12 +45,12 @@ Configure the Cinder driver. Open **/etc/cinder/cinder.conf** in an editor to bo
  iscsi_helper = <iscsi helper type. Standard Value>
  volume_dd_blocksize = <block size>
  volume_driver = <Path of the main class of iXsystems cinder driver. The standard value for this driver is cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver>
- ixsystems_login = <username of TrueNAS/FreeNAS Host - currently needs to be root>
- ixsystems_password = <Password of TrueNAS/FreeNAS Host - the root password>
+ ixsystems_login = <username of TrueNAS Host - currently needs to be root>
+ ixsystems_password = <Password of TrueNAS Host - the root password>
  ixsystems_server_hostname = <IP Address of TrueNAS Host>
  ixsystems_volume_backend_name = <driver specific information. Standard value is 'iXsystems_TRUENAS_Storage' >
  ixsystems_iqn_prefix = <Base name of ISCSI Target. (Get it from the web UI of the connected TrueNAS system by navigating: Sharing -> Block(iscsi) -> Target Global Configuration -> Base Name)>
- ixsystems_datastore_pool = <Base pool name on the connected TrueNAS/FreeNAS host e.g. 'tank'>
+ ixsystems_datastore_pool = <Base pool name on the connected TrueNAS host e.g. 'tank'>
  ixsystems_dataset_path = <Dataset name inside the pool, full path including pool.  Can just be pool name for no nesting.  e.g. 'tank/os/cinder'.  This is where zvols will be created by the driver.>
  ixsystems_vendor_name = <driver specific information. Standard value is 'iXsystems' >
  ixsystems_storage_protocol =  <driver specific information. Standard value is 'iscsi'>
@@ -94,7 +94,7 @@ After the initial reboot or manual reset of the Cinder service, it can be easily
 
 `/usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf & echo $! >/opt/stack/status/stack/c-vol.pid; fg || echo "c-vol failed to start" | tee "/opt/stack/status/stack/c-vol.failure"`
 
-After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. Now the FreeNAS Cinder driver is functional in the OpenStack Web Interface.
+After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. Now the TrueNAS Cinder driver is functional in the OpenStack Web Interface.
 
 Getting Started If You Are Using The OpenStack Installation Guide
 =================================================================
@@ -127,7 +127,7 @@ The `Projects -> Volumes` and `Admin -> Volumes` sections of the web interface i
 
 Additional Notes
 ================
-* It has been noted that for an initial connection to be made, the TrueNAS/FreeNAS host needs to have a valid ssl certificate installed
+* It has been noted that for an initial connection to be made, the TrueNAS host needs to have a valid ssl certificate installed
 and the key `ixsystems_server_hostname` in `cinder.conf` needs to be set to the FQDN referenced by the certificate.  This issue needs
 more investigation.
 
@@ -136,7 +136,7 @@ more investigation.
 About Source Code
 =================
 
-The FreeNAS Cinder driver uses several scripts:
+The TrueNAS Cinder driver uses several scripts:
 
 * **iscsi.py**: Defines the Cinder APIs, including `create_volume` and `delete_volume`.
 * **truenasapi.py**: Defines the REST API call routine and methods.
