@@ -66,7 +66,7 @@ Here is an example configuration:
  ixsystems_login = root
  ixsystems_password = thisisdummypassword
  ixsystems_server_hostname = 100.1.2.34
- ixsystems_volume_backend_name = iXsystems_FREENAS_Storage
+ ixsystems_volume_backend_name = iXsystems_TRUENAS_Storage
  ixsystems_iqn_prefix = iqn.2005-10.org.freenas.ctl
  ixsystems_datastore_pool = tank
  ixsystems_dataset_path = tank/openstack/cinder
@@ -94,7 +94,14 @@ After the initial reboot or manual reset of the Cinder service, it can be easily
 
 `/usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf & echo $! >/opt/stack/status/stack/c-vol.pid; fg || echo "c-vol failed to start" | tee "/opt/stack/status/stack/c-vol.failure"`
 
-After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. Now the TrueNAS Cinder driver is functional in the OpenStack Web Interface.
+After the Cinder service is restarted, log in to the web interface of the Devstack Newton system by navigating to the system IP address in a web browser. After logging in, navigate to `Admin -> System -> Volumes -> Volume Types` and click `Create Volume Type`. Type `ixsystems-iscsi` in the **Name** field and check the **Public** option. Create this volume type, which is added to the list of types after the system completes the task. 
+
+Click Update Volume Type Metadata for the volume type you just created (example:ixsystems-iscsi). 
+Add metadata with key=volume_backend_name value=iXsystems_TRUENAS_Storage (This value comes from cinder.conf ixsystems_volume_backend_name = iXsystems_TRUENAS_Storage)
+
+Note: You can set your own Volume Type name.
+
+Now the TrueNAS Cinder driver is functional in the OpenStack Web Interface.
 
 Getting Started If You Are Using The OpenStack Installation Guide
 =================================================================
