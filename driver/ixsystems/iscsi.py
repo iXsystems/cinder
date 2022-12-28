@@ -147,8 +147,8 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         pass
 
     def check_connection(self):
-        # connection safety check for #27 
-        if ix_utils.parse_truenas_version(self.common._version())[1] in ('12.0', '13.0'):
+        # connection safety check for #27
+        if ix_utils.parse_truenas_version(self.common._system_version())[1] in ('12.0', '13.0'):
             LOG.debug("Tanable: %s" % str(self.common._tunable()))
             tunable = self.common._tunable()
             # default value from Truenas 12 kern.cam.ctl.max_ports 256, kern.cam.ctl.max_luns 1024
@@ -164,23 +164,22 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
                     lunallowed = min(lunallowed, int(item['value']))
             LOG.debug("Tunable OS max_luns/max_ports: %s" % lunallowed)
 
-            # check cinder driver already loaded before executing upstream code
-            if (len(cinderapi.CONF.list_all_sections()) > 0):
-                ctx = context.get_admin_context()
-                ctx.__setattr__("read_deleted", "no")
-                ctx.__setattr__("project_only", "True")
-                vols = cinderapi.volume_get_all(ctx)
-                attached_truenas_vol_count = len([vol for vol in vols
-                                                if vol.host.find("@ixsystems-iscsi#") > 0 and vol.attach_status == 'attached'])
-                if (attached_truenas_vol_count >= lunallowed):
-                    LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
-                            + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
-                    return False
+        # check cinder driver already loaded before executing upstream code
+        if (len(cinderapi.CONF.list_all_sections()) > 0):
+            ctx = context.get_admin_context()
+            ctx.__setattr__("read_deleted", "no")
+            ctx.__setattr__("project_only", "True")
+            vols = cinderapi.volume_get_all(ctx)
+            attached_truenas_vol_count = len([vol for vol in vols
+                                              if vol.host.find("@ixsystems-iscsi#") > 0 and vol.attach_status == 'attached'])
+            if (attached_truenas_vol_count >= lunallowed):
+                LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
+                          + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
+                return False
         return True
 
     def initialize_connection(self, volume, connector):
         """Do connection validation for know faiture before return connection to upstream cinder manager"""
-        
         if self.check_connection() is False:
             exception = FreeNASApiError('Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and '
                                         + 'kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.')
