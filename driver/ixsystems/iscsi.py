@@ -149,7 +149,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def check_connection(self):
         # connection safety check for #27
         if ix_utils.parse_truenas_version(self.common._system_version())[1] in ('12.0', '13.0'):
-            LOG.debug("Tanable: %s", str(self.common._tunable()))
+            LOG.debug("Tunable: %s", str(self.common._tunable()))
             tunable = self.common._tunable()
             # Default value from Truenas 12 kern.cam.ctl.max_ports 256, kern.cam.ctl.max_luns 1024
             # common._tunable() returns a list of dict [{'var':'kern.cam.ctl.max_luns','enabled':True,'value':'256'}
