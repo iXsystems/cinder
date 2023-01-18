@@ -26,7 +26,12 @@ from cinder.volume.drivers.ixsystems.options import ixsystems_basicauth_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_connection_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_provisioning_opts
 from cinder.volume.drivers.ixsystems.options import ixsystems_transport_opts
+from cinder.volume.drivers.ixsystems.freenasapi import FreeNASApiError
 from cinder.volume.drivers.ixsystems import utils as ix_utils
+from cinder import context
+import cinder.db.api as cinderapi
+from cinder.message import api
+from cinder.message.message_field import Action, Detail
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -141,7 +146,54 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         """
         pass
 
+    def check_connection(self):
+        # connection safety check for #27
+        if ix_utils.parse_truenas_version(self.common._system_version())[1] in ('12.0', '13.0'):
+            LOG.debug("Tunable: %s", str(self.common._tunable()))
+            tunable = self.common._tunable()
+            # Default value from Truenas 12 kern.cam.ctl.max_ports 256, kern.cam.ctl.max_luns 1024
+            # common._tunable() returns a list of dict [{'var':'kern.cam.ctl.max_luns','enabled':True,'value':'256'}
+            # ,{'var':'kern.cam.ctl.max_ports','enabled':True,'value':'1024'}]
+            # Retrive attach_max_allow from min value of common._tunable() 
+            # kern.cam.ctl.max_luns and kern.cam.ctl.max_ports
+            max_ports, max_luns = 256, 1024
+            for item in tunable:
+                if (item.get('enabled') and
+                        item.get('var') == 'kern.cam.ctl.max_luns' and
+                        str(item.get('value')).isnumeric()):
+                    max_luns = int(item['value'])
+                if (item.get('enabled') and
+                        item.get('var') == 'kern.cam.ctl.max_ports' and
+                        str(item.get('value')).isnumeric()):
+                    max_ports = int(item['value'])
+            attach_max_allow = min(max_luns, max_ports)
+            LOG.debug("Tunable OS max_luns/max_ports: %s", attach_max_allow)
+
+        # check cinder driver already loaded before executing upstream code
+        if (len(cinderapi.CONF.list_all_sections()) > 0):
+            ctx = context.get_admin_context()
+            ctx.__setattr__("read_deleted", "no")
+            ctx.__setattr__("project_only", "True")
+            vols = cinderapi.volume_get_all(ctx)
+            attached_truenas_vol_count = len([vol for vol in vols
+                                              if vol.host.find("@ixsystems-iscsi#") > 0 and vol.attach_status == 'attached'])
+            if (attached_truenas_vol_count >= attach_max_allow):
+                LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
+                          + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
+                return False
+        return True
+
     def initialize_connection(self, volume, connector):
+        """Do connection validation for know faiture before return connection to upstream cinder manager"""
+        if self.check_connection() is False:
+            exception = FreeNASApiError('Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and '
+                                        + 'kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.')
+            message_api = api.API()
+            ctx = context.get_admin_context()
+            ctx.project_id = volume.project_id
+            message_api.create(ctx, action=Action.ATTACH_VOLUME, resource_uuid=volume.id,
+                               exception=exception, detail=Detail.ATTACH_ERROR)
+            raise exception
         """Driver entry point to attach a volume to an instance."""
         LOG.info('iXsystems Initialise Connection')
         freenas_volume = ix_utils.generate_freenas_volume_name(

@@ -45,3 +45,18 @@ def generate_freenas_snapshot_name(name, iqn_prefix):
 def get_iscsi_portal(hostname, port):
     """Get iscsi portal info from iXsystems FREENAS configuration."""
     return "%s:%s" % (hostname, port)
+
+
+def parse_truenas_version(version):
+    """Parse and return TrueNAS verion from api to Tuple in ('FreeNAS'/'TrueNAS",'12.0'/'13.0'/'22.0','U2'/'U3') format"""
+    vsplit = version.split('-')
+    if len(vsplit) == 3:
+        main = vsplit[0]
+        mainversion = vsplit[1]
+        patch = vsplit[2]
+        return (main, mainversion, patch)
+    if len(vsplit) == 2:
+        main = vsplit[0]
+        mainversion = vsplit[1]
+        return (main, mainversion, '')
+    return ('VersionNotFound', '0', '')
