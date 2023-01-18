@@ -49,13 +49,14 @@ def get_iscsi_portal(hostname, port):
 
 def parse_truenas_version(version):
     """Parse and return TrueNAS verion from api to Tuple in ('FreeNAS'/'TrueNAS",'12.0'/'13.0'/'22.0','U2'/'U3') format"""
-    if len(version.split('-')) == 3:
-        main = version.split('-')[0]
-        mainversion = version.split('-')[1]
-        patch = version.split('-')[2]
+    vsplit = version.split('-')
+    if len(vsplit) == 3:
+        main = vsplit[0]
+        mainversion = vsplit[1]
+        patch = vsplit[2]
         return (main, mainversion, patch)
-    if len(version.split('-')) == 2:
-        main = version.split('-')[0]
-        mainversion = version.split('-')[1]
+    if len(vsplit) == 2:
+        main = vsplit[0]
+        mainversion = vsplit[1]
         return (main, mainversion, '')
     return ('VersionNotFound', '0', '')
