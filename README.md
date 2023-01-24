@@ -45,9 +45,11 @@ Configure the Cinder driver. Open **/etc/cinder/cinder.conf** in an editor to bo
  iscsi_helper = <iscsi helper type. Standard Value>
  volume_dd_blocksize = <block size>
  volume_driver = <Path of the main class of iXsystems cinder driver. The standard value for this driver is cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver>
- ixsystems_login = <username of TrueNAS Host - currently needs to be root>
- ixsystems_password = <Password of TrueNAS Host - the root password>
+ ixsystems_apikey = <apikey of TrueNAS - optional if you choose to use username and password authentication>
+ ixsystems_login = <username of TrueNAS Host - currently needs to be root, optional if you choose to use apikey authentication>
+ ixsystems_password = <Password of TrueNAS Host - the root password, optional if you choose to use apikey authentication>
  ixsystems_server_hostname = <IP Address of TrueNAS Host>
+ ixsystems_transport_type = <TrueNAS Host API transportation protocal, http or https, default http>
  ixsystems_volume_backend_name = <driver specific information. Standard value is 'iXsystems_TRUENAS_Storage' >
  ixsystems_iqn_prefix = <Base name of ISCSI Target. (Get it from the web UI of the connected TrueNAS system by navigating: Sharing -> Block(iscsi) -> Target Global Configuration -> Base Name)>
  ixsystems_datastore_pool = <Base pool name on the connected TrueNAS host e.g. 'tank'>
@@ -66,6 +68,7 @@ Here is an example configuration:
  ixsystems_login = root
  ixsystems_password = thisisdummypassword
  ixsystems_server_hostname = 100.1.2.34
+ ixsystems_transport_type = https
  ixsystems_volume_backend_name = iXsystems_TRUENAS_Storage
  ixsystems_iqn_prefix = iqn.2005-10.org.freenas.ctl
  ixsystems_datastore_pool = tank

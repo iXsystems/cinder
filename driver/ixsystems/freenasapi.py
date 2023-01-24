@@ -25,6 +25,7 @@ from oslo_log import log as logging
 import urllib.error
 import urllib.parse
 import urllib.request
+import ssl
 
 LOG = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ class FreeNASServer(object):
 
     FREENAS_API_VERSION = "v2.0"
     TRANSPORT_TYPE = 'http'
-    STYLE_LOGIN_PASSWORD = 'basic_auth'
 
     # FREENAS Commands
     SELECT_COMMAND = 'select'
@@ -62,17 +62,16 @@ class FreeNASServer(object):
     STATUS_ERROR = 'error'
 
     def __init__(self, host, port,
-                 username=None, password=None,
+                 username=None, password=None, apikey=None,
                  api_version=FREENAS_API_VERSION,
-                 transport_type=TRANSPORT_TYPE,
-                 style=STYLE_LOGIN_PASSWORD):
+                 transport_type=TRANSPORT_TYPE):
         self._host = host
         self._port = port
         self._username = username
         self._password = password
+        self._apikey = apikey
         self.set_api_version(api_version)
         self.set_transport_type(transport_type)
-        self.set_style(style)
 
     def get_host(self):
         return self._host
@@ -110,15 +109,6 @@ class FreeNASServer(object):
     def set_transport_type(self, transport_type):
         self._protocol = transport_type
 
-    def set_style(self, style):
-        """Set the authorization style for communicating with the server.
-
-           Supports basic_auth for now.
-        """
-        if style.lower() not in (FreeNASServer.STYLE_LOGIN_PASSWORD):
-            raise ValueError('Unsupported authentication style')
-        self._auth_style = style.lower()
-
     def get_url(self):
         """Returns connection string.
 
@@ -130,14 +120,19 @@ class FreeNASServer(object):
 
     def _create_request(self, request_d, param_list):
         """Creates urllib2.Request object."""
-        if not self._username or not self._password:
-            raise ValueError("Invalid username/password combination")
-        loginstring = ("%s:%s" % (self._username, self._password))
-        bloginstring = bytes(loginstring, encoding='utf8')
-        bauth = base64.b64encode(bloginstring)
-        auth = bauth.decode("utf8")
-        headers = {'Content-Type': 'application/json',
-                   'Authorization': 'Basic %s' % (auth,)}
+        headers = {'Content-Type': 'application/json'}
+
+        if self._apikey != '':
+            headers['Authorization'] = ("Bearer %s" % self._apikey)
+        elif self._username != '' and self._password != '':
+            loginstring = ("%s:%s" % (self._username, self._password))
+            bloginstring = bytes(loginstring, encoding='utf8')
+            bauth = base64.b64encode(bloginstring)
+            auth = bauth.decode("utf8")
+            headers['Authorization'] = 'Basic %s' % (auth)
+        else:
+            raise ValueError("Username and password, or API key is required")
+
         url = self.get_url() + request_d
         LOG.debug('url : %s, request: %s', url, request_d)
         LOG.debug('param list : %s', param_list)
@@ -203,7 +198,7 @@ class FreeNASServer(object):
             raise FreeNASApiError("Invalid FREENAS command")
         request.get_method = lambda: method
         try:
-            response_d = urllib.request.urlopen(request)
+            response_d = urllib.request.urlopen(request, context=ssl.SSLContext())
             response = self._parse_result(command_d, response_d)
             LOG.debug("invoke_command : response for request %s : %s",
                       request_d, json.dumps(response))
