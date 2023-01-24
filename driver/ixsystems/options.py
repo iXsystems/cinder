@@ -55,6 +55,12 @@ ixsystems_basicauth_opts = [
                help='Password for the storage controller',
                secret=True), ]
 
+ixsystems_apikeyauth_opts = [
+    cfg.StrOpt('ixsystems_apikey',
+               default='',
+               help='API Key use for API key based authentication',
+               secret=True)]
+
 ixsystems_provisioning_opts = [
     cfg.StrOpt('ixsystems_datastore_pool',
                default=None,

@@ -34,18 +34,18 @@ class TrueNASCommon(object):
     VERSION = "2.0.0"
     IGROUP_PREFIX = 'openstack-'
 
-    required_flags = ['ixsystems_transport_type', 'ixsystems_login',
-                      'ixsystems_password', 'ixsystems_server_hostname',
+    required_flags = ['ixsystems_transport_type', 'ixsystems_server_hostname',
                       'ixsystems_server_port', 'ixsystems_server_iscsi_port',
                       'ixsystems_volume_backend_name', 'ixsystems_vendor_name',
                       'ixsystems_storage_protocol', 'ixsystems_datastore_pool',
-                      'ixsystems_dataset_path', 'ixsystems_iqn_prefix', ]
+                      'ixsystems_dataset_path', 'ixsystems_iqn_prefix',]
 
     def __init__(self, configuration=None):
         self.configuration = configuration
         self.backend_name = self.configuration.ixsystems_volume_backend_name
         self.vendor_name = self.configuration.ixsystems_vendor_name
         self.storage_protocol = self.configuration.ixsystems_storage_protocol
+        self.apikey = self.configuration.ixsystems_apikey
         self.stats = {}
 
     def _create_handle(self, **kwargs):
@@ -58,9 +58,9 @@ class TrueNASCommon(object):
             port=kwargs['port'],
             username=kwargs['login'],
             password=kwargs['password'],
+            apikey=kwargs['apikey'],
             api_version=kwargs['api_version'],
-            transport_type=kwargs['transport_type'],
-            style=FreeNASServer.STYLE_LOGIN_PASSWORD)
+            transport_type=kwargs['transport_type'])
         if not self.handle:
             raise FreeNASApiError("Failed to create handle for FREENAS server")
 
@@ -77,6 +77,7 @@ class TrueNASCommon(object):
             port=self.configuration.ixsystems_server_port,
             login=self.configuration.ixsystems_login,
             password=self.configuration.ixsystems_password,
+            apikey=self.configuration.ixsystems_apikey,
             api_version=self.configuration.ixsystems_api_version,
             transport_type=self.configuration.ixsystems_transport_type)
 
