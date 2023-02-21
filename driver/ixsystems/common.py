@@ -339,7 +339,14 @@ class TrueNASCommon(object):
             fullvolume, snapname = clone.split('@')
             temp, snapvol = fullvolume.rsplit('/', 1)
             self._delete_snapshot(snapname, snapvol)
-        if ret['status'] != FreeNASServer.STATUS_OK:
+
+        # When deleting volume with dependent snapsnot clone, 422 error triggered. Throw VolumeIsBus exception ensures
+        # upper stream cinder manager mark volume status available instead of error-deleting.
+        if ret['status'] == 'error' and ret['response'] == '422:Unprocessable Entity':
+            errorexception = exception.VolumeIsBusy(
+                _("Cannot delete volume when clone child volume or snapshot exists!"), volume_name=name)
+            raise errorexception
+        elif ret['status'] != FreeNASServer.STATUS_OK:
             msg = ('Error while deleting volume: %s' % ret['response'])
             raise FreeNASApiError('Unexpected error', msg)
 
@@ -378,11 +385,20 @@ class TrueNASCommon(object):
             ret = self.handle.invoke_command(FreeNASServer.DELETE_COMMAND,
                                              request_urn, None)
             LOG.debug('_delete_snapshot response : %s', json.dumps(ret))
-            if ret['status'] != FreeNASServer.STATUS_OK:
+
+            # When deleting volume with dependent snapsnot clone, 422 error triggered. Throw VolumeIsBus exception ensures
+            # upper stream cinder manager mark volume status available instead of error-deleting.
+            if ret['status'] == 'error' and ret['response'] == '422:Unprocessable Entity':
+                print("volumeisbusy exeception raised")
+                errorexception = exception.VolumeIsBusy(
+                    _("Cannot delete volume when clone child volume or snapshot exists!"), volume_name=name)
+                raise errorexception
+            elif ret['status'] != FreeNASServer.STATUS_OK:
                 msg = ('Error while deleting snapshot: %s' % ret['response'])
                 raise FreeNASApiError('Unexpected error', msg)
         except Exception as e:
-            raise FreeNASApiError('Unexpected error', e)
+            if not isinstance(e, exception.VolumeIsBusy):
+                raise FreeNASApiError('Unexpected error', e)
 
     def _create_volume_from_snapshot(self, name, snapshot_name,
                                      snap_zvol_name):
