@@ -342,7 +342,7 @@ class TrueNASCommon(object):
 
         # When deleting volume with dependent snapsnot clone, 422 error triggered. Throw VolumeIsBusy exception ensures
         # upper stream cinder manager mark volume status available instead of error-deleting.
-        if ret['status'] == 'error' and ret['response'] == '422:Unprocessable Entity':
+        if ret['status'] == 'error' and ret['code'] == '422':
             errorexception = exception.VolumeIsBusy(
                 _("Cannot delete volume when clone child volume or snapshot exists!"), volume_name=name)
             raise errorexception
