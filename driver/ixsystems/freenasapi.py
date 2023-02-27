@@ -55,7 +55,8 @@ class FreeNASServer(object):
     CLONE = "clone"
     # Command response format
     COMMAND_RESPONSE = {'status': '%s',
-                        'response': '%s'}
+                        'response': '%s',
+                        'code': -1}
 
     # Command status
     STATUS_OK = 'ok'
@@ -181,6 +182,7 @@ class FreeNASServer(object):
         self.COMMAND_RESPONSE['status'] = self.STATUS_ERROR
         if isinstance(err, urllib.error.HTTPError):
             self.COMMAND_RESPONSE['response'] = '%d:%s' % (err.code, err.msg)
+            self.COMMAND_RESPONSE['code'] = err.code
         elif isinstance(err, urllib.error.URLError):
             self.COMMAND_RESPONSE['response'] = '%s:%s' % \
                                                 (str(err.reason.errno),

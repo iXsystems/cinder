@@ -281,10 +281,10 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a volume from source volume."""
         LOG.info('iXsystems Create Cloned Volume')
-        LOG.info('create_cloned_volume: %s', src_vref['id'])
+        LOG.info('create_cloned_volume: %s', volume['id'])
 
         temp_snapshot = {'volume_name': src_vref['name'],
-                         'name': 'name-c%s' % src_vref['id']}
+                         'name': 'name-%s' % volume['id']}
 
         self.create_snapshot(temp_snapshot)
         self.create_volume_from_snapshot(volume, temp_snapshot)
