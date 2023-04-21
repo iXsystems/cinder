@@ -14,6 +14,7 @@ Requirements
 1. A TrueNAS system with at least 8 Gb of memory and a minimum 20 GiB disk.  Suggested version >= 12.x to use API v2.0
 2. Another system running either DevStack (Train or higher) or an OpenStack storage node.
 3. This driver is now upgraded to Python 3, so is usable by OpenStack versions from Train on.  
+4. This driver should be running on a single cinder driver instance deployment, High Available (Active-Active) multiple cinder driver instance deployment is not supported.
 
 Getting Started with Devstack
 =============================
