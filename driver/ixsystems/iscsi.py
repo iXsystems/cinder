@@ -19,6 +19,7 @@ This driver requires iXsystems storage systems with installed iSCSI licenses.
 """
 
 import simplejson as json
+import re
 
 from cinder.volume import driver
 from cinder.volume.drivers.ixsystems import common
@@ -150,6 +151,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def check_connection(self):
         # connection safety check for #27
+        attach_max_allow = -1
         if ix_utils.parse_truenas_version(self.common._system_version())[1] in ('12.0', '13.0'):
             LOG.debug("Tunable: %s", str(self.common._tunable()))
             tunable = self.common._tunable()
@@ -178,7 +180,8 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             ctx.__setattr__("project_only", "True")
             vols = cinderapi.volume_get_all(ctx)
             attached_truenas_vol_count = len([vol for vol in vols
-                                              if vol.host.find("@ixsystems-iscsi#") > 0 and vol.attach_status == 'attached'])
+                                              if vol.host and vol.host.find("@ixsystems-iscsi#") > 0
+                                              and vol.attach_status == 'attached'])
             if (attached_truenas_vol_count >= attach_max_allow):
                 LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
                           + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
@@ -269,6 +272,18 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
                                                  existing_vol['name'])
         self.common._create_iscsitarget(freenas_volume['target'],
                                         freenas_volume['name'])
+
+        # Promote image cache volume created by cinder service account
+        # by checking project_id is cinder service project and display name match
+        # image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+ pattern
+        # This is required because image cache volume cloned from the snapshot of first volume
+        # provisioned by this image from upstream cinder flow code
+        # Without promoting image cache volume, the first volume created can no longer be deleted
+        if (self.configuration.safe_get('image_volume_cache_enabled')
+            and self.common._is_service_project(volume['project_id'])
+            and re.match(r"image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+",
+                         volume['display_name'])):
+            self.common._promote_volume(freenas_volume['name'])
 
     def get_volume_stats(self, refresh=False):
         """Get stats info from volume group / pool."""

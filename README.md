@@ -57,6 +57,7 @@ Configure the Cinder driver. Open **/etc/cinder/cinder.conf** in an editor to bo
  ixsystems_dataset_path = <Dataset name inside the pool, full path including pool.  Can just be pool name for no nesting.  e.g. 'tank/os/cinder'.  This is where zvols will be created by the driver.>
  ixsystems_vendor_name = <driver specific information. Standard value is 'iXsystems' >
  ixsystems_storage_protocol =  <driver specific information. Standard value is 'iscsi'>
+ image_volume_cache_enabled = <Enable or disable TrueNAS backend image volume cache. When set true, a service image volume is created for image as cache volume, all volume created from this image will be cloned from this service image volume snapshot. Set false disable this feature. Default false, recommend set as true>
  ```
 
 Here is an example configuration:
@@ -76,6 +77,7 @@ Here is an example configuration:
  ixsystems_dataset_path = tank/openstack/cinder
  ixsystems_vendor_name = iXsystems
  ixsystems_storage_protocol = iscsi
+ image_volume_cache_enabled = true
  ```
 
 Now restart the Cinder service to enable the changes. The simplest method is to reboot the Devstack system.
