@@ -151,7 +151,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def check_connection(self):
         # connection safety check for #27
-        attach_max_allow = -1
         if ix_utils.parse_truenas_version(self.common._system_version())[1] in ('12.0', '13.0'):
             LOG.debug("Tunable: %s", str(self.common._tunable()))
             tunable = self.common._tunable()
@@ -161,6 +160,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             # Retrive attach_max_allow from min value of common._tunable()
             # kern.cam.ctl.max_luns and kern.cam.ctl.max_ports
             max_ports, max_luns = 256, 1024
+            attach_max_allow = min(max_luns, max_ports)            
             for item in tunable:
                 if (item.get('enabled') and
                         item.get('var') == 'kern.cam.ctl.max_luns' and
@@ -173,19 +173,20 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             attach_max_allow = min(max_luns, max_ports)
             LOG.debug("Tunable OS max_luns/max_ports: %s", attach_max_allow)
 
-        # check cinder driver already loaded before executing upstream code
-        if (len(cinderapi.CONF.list_all_sections()) > 0):
-            ctx = context.get_admin_context()
-            ctx.__setattr__("read_deleted", "no")
-            ctx.__setattr__("project_only", "True")
-            vols = cinderapi.volume_get_all(ctx)
-            attached_truenas_vol_count = len([vol for vol in vols
-                                              if vol.host and vol.host.find("@ixsystems-iscsi#") > 0
-                                              and vol.attach_status == 'attached'])
-            if (attached_truenas_vol_count >= attach_max_allow):
-                LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
-                          + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
-                return False
+            # check cinder driver already loaded before executing upstream code
+            if (len(cinderapi.CONF.list_all_sections()) > 0):
+                ctx = context.get_admin_context()
+                ctx.__setattr__("read_deleted", "no")
+                ctx.__setattr__("project_only", "True")
+                vols = cinderapi.volume_get_all(ctx)
+                attached_truenas_vol_count = 0                
+                attached_truenas_vol_count = len([vol for vol in vols
+                                                if vol.host and vol.host.find("@ixsystems-iscsi#") > 0
+                                                and vol.attach_status == 'attached'])
+                if (attached_truenas_vol_count >= attach_max_allow):
+                    LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
+                            + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
+                    return False
         return True
 
     def initialize_connection(self, volume, connector):
