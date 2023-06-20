@@ -1,17 +1,15 @@
-# Copyright (c) 2016 iXsystems
-# All Rights Reserved.
+#  Copyright (c) 2016 iXsystems
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
+#       http://www.apache.org/licenses/LICENSE-2.0
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 """
 Volume driver for iXsystems iSCSI storage systems.
 
@@ -23,30 +21,27 @@ import re
 
 from cinder.volume import driver
 from cinder.volume.drivers.ixsystems import common
-from cinder.volume.drivers.ixsystems.options import ixsystems_basicauth_opts
-from cinder.volume.drivers.ixsystems.options import ixsystems_apikeyauth_opts
-from cinder.volume.drivers.ixsystems.options import ixsystems_connection_opts
-from cinder.volume.drivers.ixsystems.options import ixsystems_provisioning_opts
-from cinder.volume.drivers.ixsystems.options import ixsystems_transport_opts
+from cinder.volume.drivers.ixsystems import options
 from cinder.volume.drivers.ixsystems.freenasapi import FreeNASApiError
 from cinder.volume.drivers.ixsystems import utils as ix_utils
 from cinder import context
 import cinder.db.api as cinderapi
 from cinder.message import api
-from cinder.message.message_field import Action, Detail
+from cinder.message.message_field import *
 from oslo_config import cfg
 from oslo_log import log as logging
+from cinder import interface
 
 LOG = logging.getLogger(__name__)
 
 CONF = cfg.CONF
-CONF.register_opts(ixsystems_connection_opts)
-CONF.register_opts(ixsystems_transport_opts)
-CONF.register_opts(ixsystems_basicauth_opts)
-CONF.register_opts(ixsystems_apikeyauth_opts)
-CONF.register_opts(ixsystems_provisioning_opts)
+CONF.register_opts(options.ixsystems_connection_opts)
+CONF.register_opts(options.ixsystems_transport_opts)
+CONF.register_opts(options.ixsystems_basicauth_opts)
+CONF.register_opts(options.ixsystems_apikeyauth_opts)
+CONF.register_opts(options.ixsystems_provisioning_opts)
 
-
+@interface.volumedriver
 class FreeNASISCSIDriver(driver.ISCSIDriver):
     """FREENAS iSCSI volume driver."""
 
@@ -64,11 +59,11 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
         LOG.info('iXsystems: Init Cinder Driver')
         super(FreeNASISCSIDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(ixsystems_connection_opts)
-        self.configuration.append_config_values(ixsystems_basicauth_opts)
-        self.configuration.append_config_values(ixsystems_apikeyauth_opts)
-        self.configuration.append_config_values(ixsystems_transport_opts)
-        self.configuration.append_config_values(ixsystems_provisioning_opts)
+        self.configuration.append_config_values(options.ixsystems_connection_opts)
+        self.configuration.append_config_values(options.ixsystems_basicauth_opts)
+        self.configuration.append_config_values(options.ixsystems_apikeyauth_opts)
+        self.configuration.append_config_values(options.ixsystems_transport_opts)
+        self.configuration.append_config_values(options.ixsystems_provisioning_opts)
         self.configuration.ixsystems_iqn_prefix += ':'
         self.common = common.TrueNASCommon(configuration=self.configuration)
         self.stats = {}
@@ -84,8 +79,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             Check for configuration flags and setup iXsystems FREENAS client
         """
         LOG.info('iXsystems Do Setup')
-        # TODO:add check to see if volume exist, able to connect
-        # truenas array
         self.check_for_setup_error()
         self.common._do_custom_setup()
 
@@ -259,12 +252,12 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Create Volume From Snapshot')
         LOG.info('create_volume_from_snapshot %s', snapshot['name'])
 
-        existing_vol = ix_utils.generate_freenas_volume_name(
-            snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
-        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
-            snapshot['name'], self.configuration.ixsystems_iqn_prefix)
-        freenas_volume = ix_utils.generate_freenas_volume_name(
-            volume['name'], self.configuration.ixsystems_iqn_prefix)
+        existing_vol = ix_utils.generate_freenas_volume_name(snapshot['volume_name'],
+                                                             self.configuration.ixsystems_iqn_prefix)
+        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(snapshot['name'],
+                                                                   self.configuration.ixsystems_iqn_prefix)
+        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'],
+                                                               self.configuration.ixsystems_iqn_prefix)
         freenas_volume['size'] = volume['size']
         freenas_volume['target_size'] = volume['size']
 

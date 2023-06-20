@@ -1,17 +1,15 @@
-# Copyright (c) 2016 iXsystems
-# All Rights Reserved.
+#  Copyright (c) 2016 iXsystems
+#  Licensed under the Apache License, Version 2.0 (the "License"); you may
+#  not use this file except in compliance with the License. You may obtain
+#  a copy of the License at
 #
-#    Licensed under the Apache License, Version 2.0 (the "License"); you may
-#    not use this file except in compliance with the License. You may obtain
-#    a copy of the License at
+#       http://www.apache.org/licenses/LICENSE-2.0
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
-#
-#    Unless required by applicable law or agreed to in writing, software
-#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
-#    License for the specific language governing permissions and limitations
-#    under the License.
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#  License for the specific language governing permissions and limitations
+#  under the License.
 
 import os
 import simplejson as json
@@ -22,11 +20,11 @@ from cinder.i18n import _
 from cinder.volume.drivers.ixsystems.freenasapi import FreeNASApiError
 from cinder.volume.drivers.ixsystems.freenasapi import FreeNASServer
 from cinder.volume.drivers.ixsystems import utils as ix_utils
-from oslo_config import cfg
-from oslo_log import log as logging
 from keystoneauth1.identity import v3
 from keystoneauth1 import session
 from keystoneclient.v3 import client
+from oslo_config import cfg
+from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -37,11 +35,16 @@ class TrueNASCommon(object):
     VERSION = "2.0.0"
     IGROUP_PREFIX = 'openstack-'
 
-    required_flags = ['ixsystems_transport_type', 'ixsystems_server_hostname',
-                      'ixsystems_server_port', 'ixsystems_server_iscsi_port',
-                      'ixsystems_volume_backend_name', 'ixsystems_vendor_name',
-                      'ixsystems_storage_protocol', 'ixsystems_datastore_pool',
-                      'ixsystems_dataset_path', 'ixsystems_iqn_prefix',]
+    required_flags = ['ixsystems_transport_type',
+                      'ixsystems_server_hostname',
+                      'ixsystems_server_port',
+                      'ixsystems_server_iscsi_port',
+                      'ixsystems_volume_backend_name',
+                      'ixsystems_vendor_name',
+                      'ixsystems_storage_protocol',
+                      'ixsystems_datastore_pool',
+                      'ixsystems_dataset_path',
+                      'ixsystems_iqn_prefix',]
 
     def __init__(self, configuration=None):
         self.configuration = configuration
@@ -136,11 +139,9 @@ class TrueNASCommon(object):
     def _create_target(self, name):
         # v2.0 API - targetgroup can now be added when target is created
         targetgroup_params = [{}]
-        # TODO: Decide to create portal or not
         targetgroup_params[0]['portal'] = int(
             self.configuration.ixsystems_portal_id)
 
-        # TODO: Decide to create initiator or not
         targetgroup_params[0]['initiator'] = int(
             self.configuration.ixsystems_initiator_id)
         tgt_params = {}
@@ -251,9 +252,6 @@ class TrueNASCommon(object):
 
     def _create_iscsitarget(self, name, volume_name):
         """Creates a iSCSI target on specified volume OR snapshot.
-
-           TODO : Skipped part for snapshot, review once iscsi target working
-           TODO: Add cleanup if any operation fails
         """
 
         # Create iscsi target for specified volume
