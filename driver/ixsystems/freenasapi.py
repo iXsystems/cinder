@@ -17,8 +17,11 @@ Contains classes required to issue REST based api calls to FREENAS system.
 """
 
 import base64
-import simplejson as json
+
 import ssl
+
+import simplejson as json
+
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -30,7 +33,7 @@ LOG = logging.getLogger(__name__)
 
 
 class FreeNASServer(object):
-    """FreeNAS server connection logic."""
+    """FreeNAS/TrueNAS server helper class, handle API level connection logic."""
 
     FREENAS_API_VERSION = "v2.0"
     TRANSPORT_TYPE = 'http'
@@ -74,39 +77,50 @@ class FreeNASServer(object):
         self.set_transport_type(transport_type)
 
     def get_host(self):
+        """Get host name"""
         return self._host
 
     def get_port(self):
+        """Get port number"""
         return self._port
 
     def get_username(self):
+        """Get username"""
         return self._username
 
     def get_password(self):
+        """Get password"""
         return self._password
 
     def get_transport_type(self):
+        """Get API transport type http/https"""
         return self._protocol
 
     def set_host(self, host):
+        """Set host"""        
         self._host = host
 
     def set_port(self, port):
+        """Set port"""        
         try:
             int(port)
-        except ValueError:
-            raise ValueError("Port must be integer")
+        except ValueError as value_error:
+            raise ValueError("Port must be integer") from value_error
 
     def set_username(self, username):
+        """Set username"""
         self._username = username
 
     def set_password(self, password):
+        """Set password"""
         self._password = password
 
     def set_api_version(self, api_version):
+        """Set API version"""
         self._api_version = api_version
 
     def set_transport_type(self, transport_type):
+        """Set transport type"""
         self._protocol = transport_type
 
     def get_url(self):
@@ -114,22 +128,20 @@ class FreeNASServer(object):
 
            built using _protocol, _host, _port and _api_version fields
         """
-        return '%s://%s/api/%s' % (self._protocol,
-                                   self._host,
-                                   self._api_version)
+        return f'{self._protocol}://{self._host}/api/{self._api_version}'
 
     def _create_request(self, request_d, param_list):
         """Creates urllib2.Request object."""
         headers = {'Content-Type': 'application/json'}
 
         if self._apikey != '':
-            headers['Authorization'] = ("Bearer %s" % self._apikey)
+            headers['Authorization'] = f'Bearer {self._apikey}'
         elif self._username != '' and self._password != '':
-            loginstring = ("%s:%s" % (self._username, self._password))
+            loginstring = f'{self._username}:{self._password}'
             bloginstring = bytes(loginstring, encoding='utf8')
             bauth = base64.b64encode(bloginstring)
             auth = bauth.decode("utf8")
-            headers['Authorization'] = 'Basic %s' % (auth)
+            headers['Authorization'] = f'Basic {auth}'
         else:
             raise ValueError("Username and password, or API key is required")
 
@@ -142,11 +154,11 @@ class FreeNASServer(object):
         """Select http method based on FREENAS command."""
         if command_d == self.SELECT_COMMAND:
             return 'GET'
-        elif command_d == self.CREATE_COMMAND:
+        if command_d == self.CREATE_COMMAND:
             return 'POST'
-        elif command_d == self.DELETE_COMMAND:
+        if command_d == self.DELETE_COMMAND:
             return 'DELETE'
-        elif command_d == self.UPDATE_COMMAND:
+        if command_d == self.UPDATE_COMMAND:
             return 'PUT'
         else:
             return None
@@ -180,12 +192,11 @@ class FreeNASServer(object):
         """Collects error response message."""
         self.COMMAND_RESPONSE['status'] = self.STATUS_ERROR
         if isinstance(err, urllib.error.HTTPError):
-            self.COMMAND_RESPONSE['response'] = '%d:%s' % (err.code, err.msg)
+            self.COMMAND_RESPONSE['response'] = f'{err.code}:{err.msg}'
             self.COMMAND_RESPONSE['code'] = err.code
         elif isinstance(err, urllib.error.URLError):
-            self.COMMAND_RESPONSE['response'] = '%s:%s' % \
-                                                (str(err.reason.errno),
-                                                 err.reason.strerror)
+            self.COMMAND_RESPONSE['response'] = f'{str(err.reason.errno)}:\
+                {err.reason.strerror}'
         else:
             return None
         return self.COMMAND_RESPONSE
@@ -199,26 +210,29 @@ class FreeNASServer(object):
             raise FreeNASApiError("Invalid FREENAS command")
         request.get_method = lambda: method
         try:
-            response_d = urllib.request.urlopen(request, context=ssl.SSLContext())
+            with urllib.request.urlopen(request,
+                                    context=ssl.SSLContext()) as url_session:
+                response_d = url_session.read()
             response = self._parse_result(command_d, response_d)
             LOG.debug("invoke_command : response for request %s : %s",
                       request_d, json.dumps(response))
-        except urllib.error.HTTPError as e:
+        except urllib.error.HTTPError as http_exception:
             # LOG the error message received from FreeNAS/TrueNAS:
             # https://github.com/iXsystems/cinder/issues/11
             LOG.info('Error returned from server: "%s"',
-                     json.loads(e.read().decode('utf8'))['message'])
-            error_d = self._get_error_info(e)
+                     json.loads(http_exception.read().decode('utf8'))['message'])
+            error_d = self._get_error_info(http_exception)
+            if error_d:
+                return error_d
+            raise FreeNASApiError(http_exception.code,
+                                  http_exception.msg) from http_exception
+        except Exception as exception_error:
+            error_d = self._get_error_info(exception_error)
             if error_d:
                 return error_d
             else:
-                raise FreeNASApiError(e.code, e.msg)
-        except Exception as e:
-            error_d = self._get_error_info(e)
-            if error_d:
-                return error_d
-            else:
-                raise FreeNASApiError('Unexpected error', e)
+                raise FreeNASApiError('Unexpected error',
+                                      exception_error) from exception_error
         return response
 
 
@@ -230,4 +244,4 @@ class FreeNASApiError(Exception):
         self.message = message
 
     def __str__(self, *args, **kwargs):
-        return 'FREENAS api failed. Reason - %s:%s' % (self.code, self.message)
+        return f'FREENAS api failed. Reason - {self.code}:{self.message}'

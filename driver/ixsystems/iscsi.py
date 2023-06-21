@@ -27,7 +27,7 @@ from cinder.volume.drivers.ixsystems import utils as ix_utils
 from cinder import context
 import cinder.db.api as cinderapi
 from cinder.message import api
-from cinder.message.message_field import *
+from cinder.message.message_field import Action, Detail
 from oslo_config import cfg
 from oslo_log import log as logging
 from cinder import interface
@@ -58,7 +58,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         """Initialize FreeNASISCSIDriver Class."""
 
         LOG.info('iXsystems: Init Cinder Driver')
-        super(FreeNASISCSIDriver, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.configuration.append_config_values(options.ixsystems_connection_opts)
         self.configuration.append_config_values(options.ixsystems_basicauth_opts)
         self.configuration.append_config_values(options.ixsystems_apikeyauth_opts)
@@ -71,7 +71,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def check_for_setup_error(self):
         """Check for iXsystems FREENAS configuration parameters."""
         LOG.info('iXSystems: Check For Setup Error')
-        self.common._check_flags()
+        self.common.check_flags()
 
     def do_setup(self, context):
         """Setup iXsystems FREENAS driver.
@@ -80,7 +80,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         """
         LOG.info('iXsystems Do Setup')
         self.check_for_setup_error()
-        self.common._do_custom_setup()
+        self.common.do_custom_setup()
 
     def create_volume(self, volume):
         """Creates a volume of specified size and export it as iscsi target."""
@@ -97,10 +97,10 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         freenas_volume['size'] = volume['size']
         freenas_volume['target_size'] = volume['size']
 
-        self.common._create_volume(freenas_volume['name'],
+        self.common.create_volume(freenas_volume['name'],
                                    freenas_volume['size'])
         # Remove LUN Creation from here,check at initi
-        self.common._create_iscsitarget(freenas_volume['target'],
+        self.common.create_iscsitarget(freenas_volume['target'],
                                         freenas_volume['name'])
 
     def delete_volume(self, volume):
@@ -113,16 +113,16 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             self.configuration.ixsystems_iqn_prefix)
 
         if freenas_volume['target']:
-            self.common._delete_iscsitarget(freenas_volume['target'])
+            self.common.delete_iscsitarget(freenas_volume['target'])
         if freenas_volume['name']:
-            self.common._delete_volume(freenas_volume['name'])
+            self.common.delete_volume(freenas_volume['name'])
 
     def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
         LOG.info('iXsystems Create Export')
         LOG.debug('create_export %s', volume['name'])
 
-        handle = self.common._create_export(volume['name'])
+        handle = self.common.create_export(volume['name'])
         LOG.info('provider_location: %s', handle)
         return {'provider_location': handle}
 
@@ -131,7 +131,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Ensure Export')
         LOG.debug('ensure_export %s', volume['name'])
 
-        handle = self.common._create_export(volume['name'])
+        handle = self.common.create_export(volume['name'])
         LOG.info('provider_location: %s', handle)
         return {'provider_location': handle}
 
@@ -140,20 +140,21 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
            we have nothing to do for unexporting.
         """
-        pass
 
     def check_connection(self):
-        # connection safety check for #27
-        if ix_utils.parse_truenas_version(self.common._system_version())[1] in ('12.0', '13.0'):
-            LOG.debug("Tunable: %s", str(self.common._tunable()))
-            tunable = self.common._tunable()
-            # Default value from Truenas 12 kern.cam.ctl.max_ports 256, kern.cam.ctl.max_luns 1024
-            # common._tunable() returns a list of dict [{'var':'kern.cam.ctl.max_luns','enabled':True,'value':'256'}
-            # ,{'var':'kern.cam.ctl.max_ports','enabled':True,'value':'1024'}]
-            # Retrive attach_max_allow from min value of common._tunable()
+        """Connection safety check"""
+        if ix_utils.parse_truenas_version(self.common.system_version())[1] in ('12.0', '13.0'):
+            LOG.debug("Tunable: %s", str(self.common.tunable()))
+            tunable = self.common.tunable()
+            # Default value from Truenas 12 kern.cam.ctl.max_ports 256,
+            # kern.cam.ctl.max_luns 1024 common.tunable() returns a
+            # list of dict
+            # [{'var':'kern.cam.ctl.max_luns','enabled':True,'value':'256'},
+            # {'var':'kern.cam.ctl.max_ports','enabled':True,'value':'1024'}]
+            # Retrive attach_max_allow from min value of common.tunable()
             # kern.cam.ctl.max_luns and kern.cam.ctl.max_ports
             max_ports, max_luns = 256, 1024
-            attach_max_allow = min(max_luns, max_ports)            
+            attach_max_allow = min(max_luns, max_ports)
             for item in tunable:
                 if (item.get('enabled') and
                         item.get('var') == 'kern.cam.ctl.max_luns' and
@@ -169,24 +170,26 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             # check cinder driver already loaded before executing upstream code
             if (len(cinderapi.CONF.list_all_sections()) > 0):
                 ctx = context.get_admin_context()
-                ctx.__setattr__("read_deleted", "no")
-                ctx.__setattr__("project_only", "True")
                 vols = cinderapi.volume_get_all(ctx)
-                attached_truenas_vol_count = 0                
-                attached_truenas_vol_count = len([vol for vol in vols
-                                                if vol.host and vol.host.find("@ixsystems-iscsi#") > 0
-                                                and vol.attach_status == 'attached'])
+                attached_truenas_vol_count = 0
+                attached_truenas_vol_count = len(
+                    [vol for vol in vols
+                        if vol.host and vol.host.find("@ixsystems-iscsi#") > 0
+                            and vol.attach_status == 'attached'])
                 if (attached_truenas_vol_count >= attach_max_allow):
-                    LOG.error("Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and "
-                            + "kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.")
+                    LOG.error("Maximum lun/port limitation reached. Change \
+                        kern.cam.ctl.max_luns and kern.cam.ctl.max_ports \
+                        in tunable settings to allow more lun attachments.")
                     return False
         return True
 
     def initialize_connection(self, volume, connector):
-        """Do connection validation for know faiture before return connection to upstream cinder manager"""
+        """Do connection validation for know faiture before return 
+        connection to upstream cinder manager"""
         if self.check_connection() is False:
-            exception = FreeNASApiError('Maximum lun/port limitation reached. Change kern.cam.ctl.max_luns and '
-                                        + 'kern.cam.ctl.max_ports in tunable settings to allow more lun attachments.')
+            exception = FreeNASApiError('Maximum lun/port limitation reached. \
+                Change kern.cam.ctl.max_luns and kern.cam.ctl.max_ports in \
+                tunable settings to allow more lun attachments.')
             message_api = api.API()
             ctx = context.get_admin_context()
             ctx.project_id = volume.project_id
@@ -218,7 +221,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to detach a volume from an instance."""
-        pass
 
     def create_snapshot(self, snapshot):
         """Driver entry point for creating a snapshot."""
@@ -230,7 +232,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         freenas_volume = ix_utils.generate_freenas_volume_name(
             snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
 
-        self.common._create_snapshot(freenas_snapshot['name'],
+        self.common.create_snapshot(freenas_snapshot['name'],
                                      freenas_volume['name'])
 
     def delete_snapshot(self, snapshot):
@@ -244,7 +246,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             snapshot['volume_name'],
             self.configuration.ixsystems_iqn_prefix)
 
-        self.common._delete_snapshot(freenas_snapshot['name'],
+        self.common.delete_snapshot(freenas_snapshot['name'],
                                      freenas_volume['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -252,19 +254,19 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('iXsystems Create Volume From Snapshot')
         LOG.info('create_volume_from_snapshot %s', snapshot['name'])
 
-        existing_vol = ix_utils.generate_freenas_volume_name(snapshot['volume_name'],
-                                                             self.configuration.ixsystems_iqn_prefix)
-        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(snapshot['name'],
-                                                                   self.configuration.ixsystems_iqn_prefix)
-        freenas_volume = ix_utils.generate_freenas_volume_name(volume['name'],
-                                                               self.configuration.ixsystems_iqn_prefix)
+        existing_vol = ix_utils.generate_freenas_volume_name(
+            snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
+        freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
+            snapshot['name'], self.configuration.ixsystems_iqn_prefix)
+        freenas_volume = ix_utils.generate_freenas_volume_name(
+            volume['name'], self.configuration.ixsystems_iqn_prefix)
         freenas_volume['size'] = volume['size']
         freenas_volume['target_size'] = volume['size']
 
-        self.common._create_volume_from_snapshot(freenas_volume['name'],
+        self.common.create_volume_from_snapshot(freenas_volume['name'],
                                                  freenas_snapshot['name'],
                                                  existing_vol['name'])
-        self.common._create_iscsitarget(freenas_volume['target'],
+        self.common.create_iscsitarget(freenas_volume['target'],
                                         freenas_volume['name'])
 
         # Promote image cache volume created by cinder service account
@@ -274,16 +276,16 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         # provisioned by this image from upstream cinder flow code
         # Without promoting image cache volume, the first volume created can no longer be deleted
         if (self.configuration.safe_get('image_volume_cache_enabled')
-            and self.common._is_service_project(volume['project_id'])
+            and self.common.is_service_project(volume['project_id'])
             and re.match(r"image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+",
                          volume['display_name'])):
-            self.common._promote_volume(freenas_volume['name'])
+            self.common.promote_volume(freenas_volume['name'])
 
     def get_volume_stats(self, refresh=False):
         """Get stats info from volume group / pool."""
         LOG.info('iXsystems Get Volume Status')
         if refresh:
-            self.stats = self.common._update_volume_stats()
+            self.stats = self.common.update_volume_stats()
         LOG.info('get_volume_stats: %s', self.stats)
         return self.stats
 
@@ -293,7 +295,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info('create_cloned_volume: %s', volume['id'])
 
         temp_snapshot = {'volume_name': src_vref['name'],
-                         'name': 'name-%s' % volume['id']}
+                         'name': f'name-{volume["id"]}'}
 
         self.create_snapshot(temp_snapshot)
         self.create_volume_from_snapshot(volume, temp_snapshot)
@@ -313,5 +315,5 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         freenas_new_size = new_size
 
         if volume['size'] != freenas_new_size:
-            self.common._extend_volume(freenas_volume['name'],
+            self.common.extend_volume(freenas_volume['name'],
                                        freenas_new_size)
