@@ -146,8 +146,8 @@ class FreeNASServer(object):
             raise ValueError("Username and password, or API key is required")
 
         url = self.get_url() + request_d
-        LOG.debug('url : %s, request: %s', url, request_d)
-        LOG.debug('param list : %s', param_list)
+        LOG.debug(f'_create_request: url : {url}, request: {request_d}')
+        LOG.debug(f'_create_request: param list : {param_list}')
         return urllib.request.Request(url, param_list, headers)
 
     def _get_method(self, command_d):
@@ -196,7 +196,7 @@ class FreeNASServer(object):
             self.COMMAND_RESPONSE['code'] = err.code
         elif isinstance(err, urllib.error.URLError):
             self.COMMAND_RESPONSE['response'] = f'{str(err.reason.errno)}:\
-                {err.reason.strerror}'
+            {err.reason.strerror}'
         else:
             return None
         return self.COMMAND_RESPONSE
@@ -204,6 +204,7 @@ class FreeNASServer(object):
     def invoke_command(self, command_d, request_d, param_list):
         """Invokes api and returns response object."""
         LOG.debug('invoke_command')
+        LOG.debug(f'command_d:{command_d} request_d:{request_d} param_list:{param_list}')
         request = self._create_request(request_d, param_list)
         method = self._get_method(command_d)
         if not method:
@@ -211,16 +212,15 @@ class FreeNASServer(object):
         request.get_method = lambda: method
         try:
             with urllib.request.urlopen(request,
-                                    context=ssl.SSLContext()) as url_session:
-                response_d = url_session.read()
-            response = self._parse_result(command_d, response_d)
-            LOG.debug("invoke_command : response for request %s : %s",
-                      request_d, json.dumps(response))
+                                    context=ssl.SSLContext()) as response_d:
+                response = self._parse_result(command_d, response_d)
+                LOG.debug(f'invoke_command : response for request {request_d} :\
+                {json.dumps(response)}')
         except urllib.error.HTTPError as http_exception:
             # LOG the error message received from FreeNAS/TrueNAS:
             # https://github.com/iXsystems/cinder/issues/11
-            LOG.info('Error returned from server: "%s"',
-                     json.loads(http_exception.read().decode('utf8'))['message'])
+            LOG.info(f'Error returned from server: \
+            {json.loads(http_exception.read().decode("utf8"))["message"]}')
             error_d = self._get_error_info(http_exception)
             if error_d:
                 return error_d
