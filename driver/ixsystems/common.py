@@ -21,7 +21,7 @@ from cinder.volume.drivers.ixsystems.freenasapi import FreeNASServer
 from cinder.volume.drivers.ixsystems import utils as ix_utils
 from keystoneauth1.identity import v3
 from keystoneauth1 import session
-from keystoneauth1.exceptions.http import Forbidden
+from keystoneauth1.exceptions.http import Unauthorized
 from keystoneclient.v3 import client
 from oslo_config import cfg
 from oslo_log import log as logging
@@ -112,8 +112,8 @@ class TrueNASCommon(object):
     def _target_to_extent(self, target_id, extent_id):
         """Create relationship between iscsi target to iscsi extent."""
 
-        LOG.debug(f'_target_to_extent target id : {target_id} \
-        extend id : {extent_id}')
+        LOG.debug(f'_target_to_extent target id : {target_id}'\
+        f'extend id : {extent_id}')
 
         request_urn = f'{FreeNASServer.REST_API_TARGET_TO_EXTENT}/'
         params = {}
@@ -303,7 +303,8 @@ class TrueNASCommon(object):
         """returns the fullname of snapshot used to create volume 'name'."""
         encoded_datapath = urllib.parse.quote_plus(
                 self.configuration.ixsystems_dataset_path + '/')
-        request_urn = f'{FreeNASServer.REST_API_VOLUME}/id/{encoded_datapath}{name}'
+        request_urn = f'{FreeNASServer.REST_API_VOLUME}'\
+        f'/id/{encoded_datapath}{name}'
         LOG.debug(f'_dependent_clones urn : {request_urn}')
         ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND,
                                          request_urn, None)
@@ -319,7 +320,8 @@ class TrueNASCommon(object):
         """Deletes specified volume."""
         encoded_datapath = urllib.parse.quote_plus(
                 self.configuration.ixsystems_dataset_path + '/')
-        request_urn = (f'{FreeNASServer.REST_API_VOLUME}/id/{encoded_datapath}{name}')
+        request_urn = (f'{FreeNASServer.REST_API_VOLUME}'\
+                       f'/id/{encoded_datapath}{name}')
         LOG.debug(f'_delete_volume urn : {request_urn}')
         # add check for dependent clone, if exists will delete
         clone = self._dependent_clone(name)
@@ -350,8 +352,8 @@ class TrueNASCommon(object):
     def create_snapshot(self, name, volume_name):
         """Creates a snapshot of specified volume."""
         args = {}
-        args['dataset'] = f'{self.configuration.ixsystems_dataset_path}/\
-        {volume_name}'
+        args['dataset'] = f'{self.configuration.ixsystems_dataset_path}/'\
+                        f'{volume_name}'
         args['name'] = name
         jargs = json.dumps(args)
         jargs = jargs.encode("utf8")
@@ -370,22 +372,22 @@ class TrueNASCommon(object):
 
     def delete_snapshot(self, name, volume_name):
         """Delets a snapshot of specified volume."""
-        LOG.debug(f'_delete_snapshot, deleting name: {name} from \
-        volume: {volume_name}')
+        LOG.debug(f'_delete_snapshot, deleting name: {name} from '\
+                f'volume: {volume_name}')
         encoded_datapath = urllib.parse.quote_plus(
                 self.configuration.ixsystems_dataset_path + '/' + volume_name)
-        request_urn = '{FreeNASServer.REST_API_SNAPSHOT}\
-        /id/{encoded_datapath}@{name}'
+        request_urn = f'{FreeNASServer.REST_API_SNAPSHOT}'\
+                f'/id/{encoded_datapath}@{name}'
         LOG.debug(f'_delete_snapshot urn : {request_urn}')
         try:
             ret = self.handle.invoke_command(FreeNASServer.SELECT_COMMAND,
                                              request_urn, None)
             LOG.debug(f'_delete_snapshot select response : {json.dumps(ret)}')
             if ret['status'] == 'error' and ret['code'] == 404:
-                LOG.info(f'Attempting delete Cinder volume {volume_name} \
-                snapshot {name}, however it cannot be found on TrueNAS')
-                LOG.info('Assume TrueNAS admin delete it manually, \
-                proceeding with snapshot delete action on cinder side')
+                LOG.info(f'Attempting delete Cinder volume {volume_name} '\
+                f'snapshot {name}, however it cannot be found on TrueNAS')
+                LOG.info('Assume TrueNAS admin delete it manually, '\
+                'proceeding with snapshot delete action on cinder side')
                 return
         except FreeNASApiError as api_error:
             raise FreeNASApiError('Unexpected error', api_error) from api_error
@@ -413,20 +415,20 @@ class TrueNASCommon(object):
                                     snap_zvol_name):
         """creates a volume from a snapshot"""
         args = {}
-        args['snapshot'] = f'{self.configuration.ixsystems_dataset_path}\
-        /{snap_zvol_name}@{snapshot_name}'
-        args['dataset_dst'] = f'{self.configuration.ixsystems_dataset_path}\
-        /{name}'
+        args['snapshot'] = f'{self.configuration.ixsystems_dataset_path}'\
+            f'/{snap_zvol_name}@{snapshot_name}'
+        args['dataset_dst'] = f'{self.configuration.ixsystems_dataset_path}'\
+            f'/{name}'
         jargs = json.dumps(args)
         jargs = jargs.encode("utf8")
-        request_urn = f'{FreeNASServer.REST_API_SNAPSHOT}\
-        /{FreeNASServer.CLONE}'
+        request_urn = f'{FreeNASServer.REST_API_SNAPSHOT}'\
+            f'/{FreeNASServer.CLONE}'
         LOG.debug(f'_create_volume_from_snapshot urn : {request_urn}')
         try:
             ret = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
                                              request_urn, jargs)
-            LOG.debug(f'_create_volume_from_snapshot response : \
-            {json.dumps(ret)}')
+            LOG.debug(f'_create_volume_from_snapshot response : '\
+                f'{json.dumps(ret)}')
             if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = f'Error while creating snapshot: {ret["response"]}'
                 raise FreeNASApiError('Unexpected error', msg)
@@ -435,10 +437,10 @@ class TrueNASCommon(object):
 
     def promote_volume(self, volume_name):
         """Promote a volume"""
-        encoded_datapath = urllib.parse.quote_plus(self.configuration.ixsystems_dataset_path
-                                                   + "/" + volume_name)
-        request_urn = (f'{FreeNASServer.REST_API_VOLUME}/id/\
-        {encoded_datapath}/promote')
+        encoded_datapath = urllib.parse.quote_plus(
+            self.configuration.ixsystems_dataset_path + "/" + volume_name)
+        request_urn = (f'{FreeNASServer.REST_API_VOLUME}/id/'\
+            f'{encoded_datapath}/promote')
         LOG.debug(f'_promote_volume urn : {request_urn}')
         try:
             ret = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
@@ -474,7 +476,7 @@ class TrueNASCommon(object):
             project = keystone.projects.get(project_id)
             if project.name == CONF.keystone_authtoken.project_name:
                 return True
-        except Forbidden:
+        except Unauthorized:
             # Invalid project id will cause Forbidden exception from keystone client,
             # in this case it is allowed and normal, hence do nothing
             pass
@@ -593,8 +595,8 @@ class TrueNASCommon(object):
             LOG.error('Error in exporting FREENAS volume!')
             handle = None
         else:
-            handle = f'{self.configuration.ixsystems_server_hostname}:\
-            {self.configuration.ixsystems_server_iscsi_port},\
-            {freenas_volume["target"]} {freenas_volume["iqn"]}'
+            handle = f'{self.configuration.ixsystems_server_hostname}:'\
+            f'{self.configuration.ixsystems_server_iscsi_port},'\
+            f'{freenas_volume["target"]} {freenas_volume["iqn"]}'
         LOG.debug(f'provider_location: {handle}')
         return handle
