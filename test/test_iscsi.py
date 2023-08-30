@@ -8,39 +8,26 @@ from cinder.volume import configuration as conf
 from cinder.tests.unit import fake_volume
 from cinder import context
 
+request_patch = 'cinder.volume.drivers.ixsystems.freenasapi.urllib.request'
+open_patch = 'cinder.volume.drivers.ixsystems.'\
+    'freenasapi.urllib.request.urlopen'
+
+
 class fakecommon(TrueNASCommon):
 
     def __init__(self, configuration=None):
         CONF = MagicMock(spec=conf.Configuration)
-        CONF.iscsi_helper = 'tgtadm'
-        CONF.volume_dd_blocksize = 512
-        CONF.volume_driver = 'cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver'
-        CONF.ixsystems_login = 'root'
-        CONF.ixsystems_password = 'Pa55w0rd'
-        CONF.ixsystems_apikey = ''
-        CONF.ixsystems_server_hostname = '10.3.1.81'
-        CONF.ixsystems_server_port = 80
-        CONF.ixsystems_transport_type = 'http'
-        CONF.ixsystems_volume_backend_name = 'iXsystems_FREENAS_Storage'
-        CONF.ixsystems_iqn_prefix = 'iqn.2005-10.org.freenas.ctl'
-        CONF.ixsystems_datastore_pool = 'cinder-zpool'
-        CONF.ixsystems_dataset_path = 'cinder-zpool/mydataset'
-        CONF.ixsystems_vendor_name = 'iXsystems'
-        CONF.ixsystems_storage_protocol = 'iscsi'
-        CONF.ixsystems_server_iscsi_port = 3260
-        CONF.ixsystems_api_version = 'v2.0'
-        CONF.ixsystems_reserved_percentage = 0
-        CONF.ixsystems_portal_id = 0         
-        CONF.ixsystems_initiator_id = 1
-        self.is_service_project = MagicMock(return_value= False)
-        self.common = TrueNASCommon(configuration = CONF)
+        for k, v in fake_config_dict.items():
+            setattr(CONF, k, v)
+        self.is_service_project = MagicMock(return_value=False)
+        self.common = TrueNASCommon(configuration=CONF)
         self.common.do_custom_setup()
         self.common._create_target = MagicMock()
         self.common._create_extent = MagicMock()
         self.common._target_to_extent = MagicMock()
         self.common._dependent_clone = MagicMock()
         self.common.delete_iscsitarget = MagicMock()
-        super().__init__(configuration = CONF)
+        super().__init__(configuration=CONF)
 
     def _create_handle(self, **kwargs):
         """Instantiate client for API comms with iXsystems FREENAS server."""
@@ -54,110 +41,124 @@ class fakecommon(TrueNASCommon):
             api_version=kwargs['api_version'],
             transport_type=kwargs['transport_type'])
 
-
     def create_volume(self, name, size):
-        urlreadresult = b'{"name": "cinder-zpool/mydataset/vol1", "type": "VOLUME", "volsize": 1073741824}'
+        urlreadresult = b'{"name": "cinder-zpool/mydataset/vol1", "type": '\
+            b'"VOLUME", "volsize": 1073741824}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.create_volume(name, size)
 
-    def get_iscsitarget_id(self,name):
-        urlreadresult = b'[{"id":2,"name":"target-6410a089","alias":null,"mode":"ISCSI","groups":[{"portal":1,"initiator":1,"auth":null,"authmethod":"NONE"}]}]'
+    def get_iscsitarget_id(self, name):
+        urlreadresult = b'[{"id":2,"name":"target-6410a089","alias":null,'\
+            b'"mode":"ISCSI","groups":[{"portal":1,"initiator":1,"auth":n'\
+            b'ull,"authmethod":"NONE"}]}]'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.get_iscsitarget_id(name)
 
-    def get_extent_id(self,name):
-        urlreadresult = b'[{"id":2,"name":"target-6410a089","serial":"000c29aef785001","type":"DISK","path":"zvol/pool/cinder/volume-6410a089","filesize":"0","blocksize":512,"pblocksize":false,"avail_threshold":null,"comment":"","naa":"0x6589cfc00000033f74d0d84613b0caea","insecure_tpc":true,"xen":false,"rpm":"SSD","ro":false,"enabled":true,"vendor":"TrueNAS","disk":"zvol/pool/cinder/volume-6410a089","locked":false}]'
+    def get_extent_id(self, name):
+        urlreadresult = b'[{"id":2,"name":"target-6410a089","serial":"000'\
+            b'c29aef785001","type":"DISK","path":"zvol/pool/cinder/volume'\
+            b'-6410a089","filesize":"0","blocksize":512,"pblocksize":fals'\
+            b'e,"avail_threshold":null,"comment":"","naa":"0x6589cfc00000'\
+            b'033f74d0d84613b0caea","insecure_tpc":true,"xen":false,"rpm"'\
+            b':"SSD","ro":false,"enabled":true,"vendor":"TrueNAS","disk":'\
+            b'"zvol/pool/cinder/volume-6410a089","locked":false}]'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.get_extent_id(name)
 
-    def get_tgt_ext_id(self,name):
+    def get_tgt_ext_id(self, name):
         urlreadresult = b'[{"id":0,"lunid":0,"extent":2,"target":2}]'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.get_tgt_ext_id(name)
 
-    def create_iscsitarget(self,name, volume_name):
+    def create_iscsitarget(self, name, volume_name):
         self.common.create_iscsitarget(name, volume_name)
 
-    def delete_target(self,target_id):
+    def delete_target(self, target_id):
         urlreadresult = b'true'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.delete_target(target_id)
 
-    def delete_extent(self,extent_id):
+    def delete_extent(self, extent_id):
         urlreadresult = b'true'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.delete_extent(extent_id)
 
-    def delete_volume(self,name):
+    def delete_volume(self, name):
         urlreadresult = b'true'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common._dependent_clone = MagicMock(return_value=False)
                 self.common.delete_volume(name)
 
-    def create_snapshot(self,name,volume_name):
-        urlreadresult = b'{"id":"pool/cinder/volume-cf879408@snap-8b839f49","name":"pool/cinder/volume-cf879408@snap-8b839f49","pool":"pool","type":"SNAPSHOT"}'
+    def create_snapshot(self, name, volume_name):
+        urlreadresult = b'{"id":"pool/cinder/volume-cf879408@snap-8b839f49"'\
+            b',"name":"pool/cinder/volume-cf879408@snap-8b839f49","pool":"p'\
+            b'ool","type":"SNAPSHOT"}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
-                self.common.create_snapshot(name,volume_name)
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
+                self.common.create_snapshot(name, volume_name)
 
-    def delete_snapshot(self,name,volume_name):
-        urlreadresult = b'{"id":"pool/cinder/volume-cf879408@snap-8b839f49","name":"pool/cinder/volume-cf879408@snap-8b839f49","pool":"pool","type":"SNAPSHOT"}'
+    def delete_snapshot(self, name, volume_name):
+        urlreadresult = b'{"id":"pool/cinder/volume-cf879408@snap-8b839f49'\
+            b'","name":"pool/cinder/volume-cf879408@snap-8b839f49","pool":'\
+            b'"pool","type":"SNAPSHOT"}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
-                self.common.delete_snapshot(name,volume_name)
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
+                self.common.delete_snapshot(name, volume_name)
 
     def create_volume_from_snapshot(self, name, snapshot_name, snap_zvol_name):
-        urlreadresult = b'{"snapshot": "pool/cinder/volume-be93bccd@snap-79fe98cf", "dataset_dst": "pool/cinder/volume-83b64291"}'
+        urlreadresult = b'{"snapshot": "pool/cinder/volume-be93bccd@snap-7'\
+            b'9fe98cf", "dataset_dst": "pool/cinder/volume-83b64291"}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
-                self.common.create_volume_from_snapshot(name, snapshot_name, snap_zvol_name)
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
+                self.common.create_volume_from_snapshot(name, snapshot_name,
+                                                        snap_zvol_name)
 
     def promote_volume(self, volume_name):
         urlreadresult = b'null'
@@ -165,8 +166,8 @@ class fakecommon(TrueNASCommon):
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.promote_volume(volume_name)
 
     def system_version(self):
@@ -175,43 +176,61 @@ class fakecommon(TrueNASCommon):
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 return self.common.system_version()
 
     def tunable(self):
-        urlreadresult = b'[{"id":3,"value":"2","type":"LOADER","comment":"","enabled":true,"var":"hint.isp.0.role"},{"id":4,"value":"2","type":"LOADER","comment":"","enabled":true,"var":"hint.isp.1.role"},{"id":5,"value":"2","type":"LOADER","comment":"","enabled":true,"var":"hint.isp.2.role"},{"id":6,"value":"2","type":"LOADER","comment":"","enabled":true,"var":"hint.isp.3.role"},{"id":7,"value":"256","type":"LOADER","comment":"","enabled":true,"var":"kern.cam.ctl.max_ports"}]'
+        urlreadresult = b'[{"id":3,"value":"2","type":"LOADER","comment":"'\
+            b'","enabled":true,"var":"hint.isp.0.role"},{"id":4,"value":"2'\
+            b'","type":"LOADER","comment":"","enabled":true,"var":"hint.is'\
+            b'p.1.role"},{"id":5,"value":"2","type":"LOADER","comment":"",'\
+            b'"enabled":true,"var":"hint.isp.2.role"},{"id":6,"value":"2",'\
+            b'"type":"LOADER","comment":"","enabled":true,"var":"hint.isp.'\
+            b'3.role"},{"id":7,"value":"256","type":"LOADER","comment":"",'\
+            b'"enabled":true,"var":"kern.cam.ctl.max_ports"}]'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 return self.common.tunable()
 
     def update_volume_stats(self):
-        urlreadresult =b'{"id":"pool/cinder","name":"pool/cinder","pool":"pool","used":{"value":"4.26G","rawvalue":"4570963968","parsed":4570963968,"source":"NONE"},"available":{"value":"48.9G","rawvalue":"52530008064","parsed":52530008064,"source":"NONE"}}'
+        urlreadresult = b'{"id":"pool/cinder","name":"pool/cinder","pool":'\
+            b'"pool","used":{"value":"4.26G","rawvalue":"4570963968","pars'\
+            b'ed":4570963968,"source":"NONE"},"available":{"value":"48.9G"'\
+            b',"rawvalue":"52530008064","parsed":52530008064,"source":"NON'\
+            b'E"}}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
-                self.common.system_version = MagicMock(return_value = "TrueNAS")
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
+                self.common.system_version = MagicMock(return_value="TrueNAS")
                 return self.common.update_volume_stats()
 
     def extend_volume(self, name, new_size):
-        urlreadresult = b'{"id":"cinder-zpool/mydataset/volume-f9ecfc53","name":"cinder-zpool/mydataset/volume-f9ecfc53","pool":"pool","type":"VOLUME","volsize":{"value":"2G","rawvalue":"2147483648","parsed":2147483648,"source":"LOCAL"},"used":{"value":"2.06G","rawvalue":"2216689664","parsed":2216689664,"source":"NONE"},"available":{"value":"50.0G","rawvalue":"53639102464","parsed":53639102464,"source":"NONE"}}'
+        urlreadresult = b'{"id":"cinder-zpool/mydataset/volume-f9ecfc53",'\
+            b'"name":"cinder-zpool/mydataset/volume-f9ecfc53","pool":"poo'\
+            b'l","type":"VOLUME","volsize":{"value":"2G","rawvalue":"2147'\
+            b'483648","parsed":2147483648,"source":"LOCAL"},"used":{"valu'\
+            b'e":"2.06G","rawvalue":"2216689664","parsed":2216689664,"sou'\
+            b'rce":"NONE"},"available":{"value":"50.0G","rawvalue":"53639'\
+            b'102464","parsed":53639102464,"source":"NONE"}}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
-        with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request') as mock_request:
-            with patch('cinder.volume.drivers.ixsystems.freenasapi.urllib.request.urlopen',return_value =urlrespond) as mock_urlopen:
+        with patch(request_patch):
+            with patch(open_patch, return_value=urlrespond):
                 self.common.extend_volume(name, new_size)
 
     def create_export(self, volume_name):
         return self.common.create_export(volume_name)
+
 
 FakeConnector = {'initiator': 'iqn.2005-10.org.freenas.ctltarget-2b12',
                  'multipath': False,
@@ -219,7 +238,33 @@ FakeConnector = {'initiator': 'iqn.2005-10.org.freenas.ctltarget-2b12',
                  'wwnns': ['10000090fa0d6755'],
                  'host': '10.3.1.81',
                  }
-FakeSnapshot = {'name':"snap-fakeid",'volume_name':'fake-volumeid'}
+
+
+FakeSnapshot = {'name': "snap-fakeid", 'volume_name': 'fake-volumeid'}
+
+
+fake_config_dict = {
+    'iscsi_helper': 'tgtadm',
+    'volume_dd_blocksize': 512,
+    'volume_driver':
+        'cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver',
+    'ixsystems_login': 'root',
+    'ixsystems_password': 'Pa55w0rd',
+    'ixsystems_apikey': '',
+    'ixsystems_server_hostname': '10.3.1.81',
+    'ixsystems_server_port': 80,
+    'ixsystems_transport_type': 'http',
+    'ixsystems_volume_backend_name': 'iXsystems_FREENAS_Storage',
+    'ixsystems_iqn_prefix': 'iqn.2005-10.org.freenas.ctl',
+    'ixsystems_datastore_pool': 'cinder-zpool',
+    'ixsystems_dataset_path': 'cinder-zpool/mydataset',
+    'ixsystems_vendor_name': 'iXsystems',
+    'ixsystems_storage_protocol': 'iscsi',
+    'ixsystems_server_iscsi_port': 3260,
+    'ixsystems_api_version': 'v2.0',
+    'ixsystems_reserved_percentage': 0
+    }
+
 
 class fakeiscsidriver(FreeNASISCSIDriver):
 
@@ -229,6 +274,7 @@ class fakeiscsidriver(FreeNASISCSIDriver):
         self.common = fakecommon(configuration=configuration)
         self.common.do_custom_setup()
 
+
 @ddt.ddt
 class FreeNASISCSIDriverTestCase(unittest.TestCase):
 
@@ -236,7 +282,8 @@ class FreeNASISCSIDriverTestCase(unittest.TestCase):
         CONF = Mock(spec=conf.Configuration)
         CONF.iscsi_helper = 'tgtadm'
         CONF.volume_dd_blocksize = 512
-        CONF.volume_driver = 'cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver'
+        CONF.volume_driver = \
+            'cinder.volume.drivers.ixsystems.iscsi.FreeNASISCSIDriver'
         CONF.ixsystems_login = 'root'
         CONF.ixsystems_password = 'Pa55w0rd'
         CONF.ixsystems_apikey = ''
@@ -252,7 +299,7 @@ class FreeNASISCSIDriverTestCase(unittest.TestCase):
         CONF.ixsystems_server_iscsi_port = 3260
         CONF.ixsystems_api_version = 'v2.0'
         CONF.ixsystems_reserved_percentage = 0
-        self.driver = fakeiscsidriver(configuration = CONF)
+        self.driver = fakeiscsidriver(configuration=CONF)
 
     def test_check_for_setup_error(self):
         self.driver.check_for_setup_error()
@@ -269,7 +316,8 @@ class FreeNASISCSIDriverTestCase(unittest.TestCase):
     def test_delete_volume(self, volume):
         self.driver.delete_volume(volume)
 
-    @ddt.data((context.get_admin_context(), fake_volume.fake_db_volume(), FakeConnector))
+    @ddt.data((context.get_admin_context(),
+               fake_volume.fake_db_volume(), FakeConnector))
     @ddt.unpack
     def test_create_export(self, context, volume, connector):
         self.driver.create_export(context, volume, connector)
@@ -322,6 +370,7 @@ class FreeNASISCSIDriverTestCase(unittest.TestCase):
     @ddt.unpack
     def test_extend_volume(self, volume, new_size):
         self.driver.extend_volume(volume, new_size)
+
 
 if __name__ == '__main__':
     unittest.main()
