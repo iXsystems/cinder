@@ -13,6 +13,7 @@
 
 import urllib.parse
 import simplejson as json
+import time
 
 from cinder import exception
 from cinder.i18n import _
@@ -34,7 +35,7 @@ class TrueNASCommon(object):
     """ TrueNAS cinder driver helper class, contains reusable TrueNAS specific driver logic"""
     VERSION = "2.0.0"
     IGROUP_PREFIX = 'openstack-'
-
+    timeout = 600
     required_flags = ['ixsystems_transport_type',
                       'ixsystems_server_hostname',
                       'ixsystems_server_port',
@@ -52,6 +53,7 @@ class TrueNASCommon(object):
         self.vendor_name = self.configuration.ixsystems_vendor_name
         self.storage_protocol = self.configuration.ixsystems_storage_protocol
         self.apikey = self.configuration.ixsystems_apikey
+        self.timeout = int(self.configuration.ixsystems_replication_timetout)
         self.stats = {}
 
     def _create_handle(self, **kwargs):
@@ -173,7 +175,7 @@ class TrueNASCommon(object):
             ext_params['name'] = name
         vol_param = f'{self.configuration.ixsystems_dataset_path}/{volume_name}'
         ext_params['disk'] = 'zvol/' + vol_param
-            
+
         jext_params = json.dumps(ext_params)
         LOG.debug(f'_create_extent params : {jext_params}')
         jext_params = jext_params.encode('utf8')
@@ -600,3 +602,78 @@ class TrueNASCommon(object):
             f'{freenas_volume["target"]} {freenas_volume["iqn"]}'
         LOG.debug(f'provider_location: {handle}')
         return handle
+
+    def replicate_volume_from_snapshot(self, target_volume_name, snapshot_name, src_volume_name):
+        """Use replicate api (zfs send/recv) to create a volume from snapshot """
+        source_name = self.configuration.ixsystems_dataset_path + "/" + src_volume_name
+        target_name = self.configuration.ixsystems_dataset_path + "/" + target_volume_name
+        split_snapshot_name = snapshot_name.split("-")
+        replication_name = f'Create volume {target_volume_name} from {src_volume_name}@{split_snapshot_name[0]}-{split_snapshot_name[1]}'
+        naming_schema = f'{split_snapshot_name[0]}-{split_snapshot_name[1]}-%Y-%m-%d-%H-%M'
+        request_urn = f'{FreeNASServer.REST_API_REPLICATION}/'
+        params = {"target_dataset": target_name,
+                  "source_datasets": [source_name],"name":replication_name,
+                  "recursive": False,  "compression": None, "speed_limit":None,
+                  "enabled": True, "direction": "PUSH",  "transport": "LOCAL",  "auto":True,
+                  "schedule": {"minute": "*", "hour":"*", "dom":"*", "month":"*", "dow":"*",
+                               "begin":"00:00","end":"23:59"}, 
+                  "also_include_naming_schema": [naming_schema],"only_matching_schedule":True
+                  ,"retention_policy": "SOURCE"}
+        jparams = json.dumps(params)
+        jparams = jparams.encode('utf8')
+        LOG.debug(f'replicate_volume_from_snapshot urn : {request_urn}')
+        try:
+            ret = self.handle.invoke_command(FreeNASServer.CREATE_COMMAND,
+                                             request_urn, jparams)
+            LOG.debug(f'{ret["response"]}')
+            if ret['status'] == FreeNASServer.STATUS_OK:
+                represult = json.loads(ret['response'])
+                starttime = int(time.time())
+                while True:
+                    if (int(time.time()) - starttime) > self.timeout:
+                        break
+                    rs = self.replication_stats(represult["id"])
+                    LOG.debug(f'replication id {rs["id"]} has state {rs["state"]["state"] }')
+                    if rs['state']['state'] == "FINISHED":
+                        # replication api will create default snapshot, which need to be
+                        # removed to avoid future delete volume failed from openstack
+                        self.delete_snapshot(snapshot_name, target_volume_name)
+                        # delete replication record
+                        self.replication_delete(represult["id"])
+                        break
+                    time.sleep(1)
+            if ret['status'] != FreeNASServer.STATUS_OK:
+                msg = (f'Error replicate volume from snapshot: {ret["response"]}')
+                raise FreeNASApiError('Unexpected error', msg)
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error
+
+    def replication_stats(self, id):
+        """ Use replication API /v2.0/replication/id/{id} to check status
+        """
+        LOG.debug('replication_status s')
+        request_urn = (f"/replication/id/{id}")
+        try:
+            rep = self.handle.invoke_command(
+                FreeNASServer.SELECT_COMMAND,
+                request_urn, None)
+            LOG.debug(f'replication_stats response: {rep["response"]}')
+            represult = json.loads(rep['response'])
+            LOG.debug(f'replication_stats response : {represult}')
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error
+        finally:
+            return represult
+
+    def replication_delete(self, id):
+        """ Use replication API /v2.0/replication/id/{id} to delete replication
+        """
+        LOG.debug(f'replication_delete {id}')
+        request_urn = (f"/replication/id/{id}")
+        try:
+            rep = self.handle.invoke_command(
+                FreeNASServer.DELETE_COMMAND,
+                request_urn, None)
+            LOG.debug(f'replication_delete response: {rep}')
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error

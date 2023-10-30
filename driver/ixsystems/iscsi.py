@@ -251,9 +251,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
-        LOG.info('iXsystems Create Volume From Snapshot')
-        LOG.info(f'create_volume_from_snapshot {snapshot["name"]}')
-
         existing_vol = ix_utils.generate_freenas_volume_name(
             snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
         freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
@@ -263,12 +260,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         freenas_volume['size'] = volume['size']
         freenas_volume['target_size'] = volume['size']
 
-        self.common.create_volume_from_snapshot(freenas_volume['name'],
-                                                 freenas_snapshot['name'],
-                                                 existing_vol['name'])
-        self.common.create_iscsitarget(freenas_volume['target'],
-                                        freenas_volume['name'])
-
+        # For Glance volume cached volume use clone api to clone volume from snapshot
         # Promote image cache volume created by cinder service account
         # by checking project_id is cinder service project and display name match
         # image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+ pattern
@@ -279,7 +271,23 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             and self.common.is_service_project(volume['project_id'])
             and re.match(r"image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+",
                          volume['display_name'])):
+            LOG.info('iXsystems clone Volume From Snapshot')
+            LOG.info(f'create_volume_from_snapshot {snapshot["name"]}')
+            self.common.create_volume_from_snapshot(freenas_volume['name'],
+                                                    freenas_snapshot['name'],
+                                                    existing_vol['name'])
+            self.common.create_iscsitarget(freenas_volume['target'],
+                                            freenas_volume['name'])
             self.common.promote_volume(freenas_volume['name'])
+        else:
+            # For none glance image cache volume, create volume from replication api
+            LOG.info('iXsystems replicate Volume From Snapshot')
+            LOG.info(f'replicate_volume_from_snapshot {snapshot["name"]}')
+            self.common.replicate_volume_from_snapshot(freenas_volume['name'],
+                                                    freenas_snapshot['name'],
+                                                    existing_vol['name'])
+            self.common.create_iscsitarget(freenas_volume['target'],
+                                            freenas_volume['name'])
 
     def get_volume_stats(self, refresh=False):
         """Get stats info from volume group / pool."""
