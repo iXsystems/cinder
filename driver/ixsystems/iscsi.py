@@ -304,14 +304,13 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
         temp_snapshot = {'volume_name': src_vref['name'],
                          'name': f'name-{volume["id"]}'}
-
+        # New implementation uses replication api to create cloned volume 
+        # from snapshot, this removes the dependency between parent volume
+        # snapshot and cloned volume. Temp snapshot need to be removed after 
+        # clone successful
         self.create_snapshot(temp_snapshot)
         self.create_volume_from_snapshot(volume, temp_snapshot)
-        # self.delete_snapshot(temp_snapshot)
-        # with API v2.0 this causes FreeNAS error
-        # "snapshot has dependent clones".  Cannot delete while volume is
-        # active.  Instead, added check and deletion of orphaned dependent
-        # clones in common._delete_volume()
+        self.delete_snapshot(temp_snapshot)
 
     def extend_volume(self, volume, new_size):
         """Driver entry point to extend an existing volumes size."""

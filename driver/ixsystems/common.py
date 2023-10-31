@@ -628,10 +628,12 @@ class TrueNASCommon(object):
             LOG.debug(f'{ret["response"]}')
             if ret['status'] == FreeNASServer.STATUS_OK:
                 represult = json.loads(ret['response'])
+                self.replication_run(represult["id"])
                 starttime = int(time.time())
                 while True:
                     if (int(time.time()) - starttime) > self.timeout:
                         break
+                    time.sleep(1)
                     rs = self.replication_stats(represult["id"])
                     LOG.debug(f'replication id {rs["id"]} has state {rs["state"]["state"] }')
                     if rs['state']['state'] == "FINISHED":
@@ -641,7 +643,6 @@ class TrueNASCommon(object):
                         # delete replication record
                         self.replication_delete(represult["id"])
                         break
-                    time.sleep(1)
             if ret['status'] != FreeNASServer.STATUS_OK:
                 msg = (f'Error replicate volume from snapshot: {ret["response"]}')
                 raise FreeNASApiError('Unexpected error', msg)
@@ -675,5 +676,18 @@ class TrueNASCommon(object):
                 FreeNASServer.DELETE_COMMAND,
                 request_urn, None)
             LOG.debug(f'replication_delete response: {rep}')
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error
+
+    def replication_run(self, id):
+        """ Use replication API /v2.0/replication/id/{id} to run replication
+        """
+        LOG.debug(f'replication_run {id}')
+        request_urn = (f"/replication/id/{id}/run")
+        try:
+            rep = self.handle.invoke_command(
+                FreeNASServer.CREATE_COMMAND,
+                request_urn, None)
+            LOG.debug(f'replication_run response: {rep}')
         except FreeNASApiError as api_error:
             raise FreeNASApiError('Unexpected error', api_error) from api_error
