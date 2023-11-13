@@ -618,7 +618,7 @@ class TrueNASCommon(object):
                   "schedule": {"minute": "*", "hour":"*", "dom":"*", "month":"*", "dow":"*",
                                "begin":"00:00","end":"23:59"}, 
                   "also_include_naming_schema": [naming_schema],"only_matching_schedule":True
-                  ,"retention_policy": "SOURCE"}
+                  ,"retention_policy": "SOURCE","readonly":"IGNORE"}
         jparams = json.dumps(params)
         jparams = jparams.encode('utf8')
         LOG.debug(f'replicate_volume_from_snapshot urn : {request_urn}')

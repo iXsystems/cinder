@@ -297,6 +297,99 @@ class TrueNASCommonTestCase(unittest.TestCase):
                 self.assertEqual(mock_request.method_calls[0][1][0],
                                  self.common.handle.get_url()+request_d)
 
+    @ddt.data(("volume-ba323557", "snap-ba323557", "volume-e66d45cd",
+               "/replication/",
+               b'{ "id": 1, "target_dataset": "pool/cinder/volume-ba323557'
+               b'", "recursive": false, "compression": null, "speed_limi'
+               b't": null, "enabled": true, "direction": "PUSH", "transp'
+               b'ort": "LOCAL", "netcat_active_side": null, "netcat_active'
+               b'_side_port_min": null, "netcat_active_side_port_max": null,'
+               b' "source_datasets": [  "pool/cinder/volume-e66d45cd" ],'
+               b' "exclude": [], "naming_schema": [], "auto": true, "o'
+               b'nly_matching_schedule": true, "readonly": "IGNORE", "allo'
+               b'w_from_scratch": false, "hold_pending_snapshots": false, '
+               b'"retention_policy": "SOURCE", "lifetime_unit": null, "lif'
+               b'etime_value": null, "large_block": true, "embed": false,'
+               b' "compressed": true, "retries": 5, "netcat_active_side'
+               b'_listen_address": null, "netcat_passive_side_connect_addre'
+               b'ss": null, "logging_level": null, "name": "Create volume'
+               b'volume-ba323557 from volume-e66d45cd@snap-ba323557", "stat'
+               b'e": {  "state": "FINISHED" }, "properties": true, "pr'
+               b'operties_exclude": [], "replicate": false, "encryption":'
+               b'false, "encryption_key": null, "encryption_key_format": '
+               b'null, "encryption_key_location": null, "ssh_credentials"'
+               b': null, "periodic_snapshot_tasks": [], "also_include_na'
+               b'ming_schema": [  "snap-ba323557-%Y-%m-%d-%H-%M" ], "sc'
+               b'hedule": {  "minute": "*",  "hour": "*",  "dom": "*",'
+               b'"month": "*",  "dow": "*",  "begin": "00:00",  "end": '
+               b'"23:59" }, "restrict_schedule": null, "job": null}',
+               {"id": 1,"state": {  "state": "FINISHED" }}
+               ))
+    @ddt.unpack
+    def test_replicate_volume_from_snapshot(self, target_volume_name,
+                                            snapshot_name, src_volume_name,
+                                            request_d, urlreadresult,
+                                            replicationstatresult):
+        urlrespond = MagicMock(name="urlrespond")
+        urlrespondcontext = MagicMock(name="urlrespondcontext")
+        urlrespond.__enter__.return_value = urlrespondcontext
+        urlrespondcontext.read.return_value = urlreadresult
+        self.common.replication_run = MagicMock()
+        self.common.replication_stats = MagicMock(return_value
+                                                  = replicationstatresult)
+        self.common.delete_snapshot = MagicMock()
+        with patch(request_patch) as mock_request:
+            with patch(open_patch, return_value=urlrespond):
+                self.common.replicate_volume_from_snapshot(target_volume_name,
+                                                           snapshot_name,
+                                                           src_volume_name)
+                self.assertEqual(mock_request.method_calls[0][1][0],
+                                 self.common.handle.get_url()+request_d)
+
+    @ddt.data(("1", "/replication/id/1",
+               b'{ "id": 1, "target_dataset": "pool/cinder/volume-ba323557",'
+               b'"state": {"state": "FINISHED"}}'))
+    @ddt.unpack
+    def test_replication_stats(self, repid, request_d, urlreadresult):
+        urlrespond = MagicMock(name="urlrespond")
+        urlrespondcontext = MagicMock(name="urlrespondcontext")
+        urlrespond.__enter__.return_value = urlrespondcontext
+        urlrespondcontext.read.return_value = urlreadresult
+        with patch(request_patch) as mock_request:
+            with patch(open_patch, return_value=urlrespond):
+                self.common.replication_stats(repid)
+                self.assertEqual(mock_request.method_calls[0][1][0],
+                                 self.common.handle.get_url()+request_d)
+
+    @ddt.data(("1", "/replication/id/1",
+               b'{ "id": 1, "target_dataset": "pool/cinder/volume-ba323557",'
+               b'true'))
+    @ddt.unpack
+    def test_replication_delete(self, repid, request_d, urlreadresult):
+        urlrespond = MagicMock(name="urlrespond")
+        urlrespondcontext = MagicMock(name="urlrespondcontext")
+        urlrespond.__enter__.return_value = urlrespondcontext
+        urlrespondcontext.read.return_value = urlreadresult
+        with patch(request_patch) as mock_request:
+            with patch(open_patch, return_value=urlrespond):
+                self.common.replication_delete(repid)
+                self.assertEqual(mock_request.method_calls[0][1][0],
+                                 self.common.handle.get_url()+request_d)
+
+    @ddt.data(("1", "/replication/id/1/run",
+               b'217682'))
+    @ddt.unpack
+    def test_replication_run(self, repid, request_d, urlreadresult):
+        urlrespond = MagicMock(name="urlrespond")
+        urlrespondcontext = MagicMock(name="urlrespondcontext")
+        urlrespond.__enter__.return_value = urlrespondcontext
+        urlrespondcontext.read.return_value = urlreadresult
+        with patch(request_patch) as mock_request:
+            with patch(open_patch, return_value=urlrespond):
+                self.common.replication_run(repid)
+                self.assertEqual(mock_request.method_calls[0][1][0],
+                                 self.common.handle.get_url()+request_d)
+
     @ddt.data(("f9ecfc53-2b12-4bfb-abe1-694970cc1341",
                "10.3.1.81:3260,target-2b12 iqn.2005-10.org."
                "freenas.ctltarget-2b12"))
@@ -325,7 +418,8 @@ fake_config_dict = {
     'ixsystems_storage_protocol': 'iscsi',
     'ixsystems_server_iscsi_port': 3260,
     'ixsystems_api_version': 'v2.0',
-    'ixsystems_reserved_percentage': 0
+    'ixsystems_reserved_percentage': 0,
+    'ixsystems_replication_timetout' : 600
     }
 
 
