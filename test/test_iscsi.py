@@ -272,7 +272,7 @@ fake_config_dict = {
     'ixsystems_server_iscsi_port': 3260,
     'ixsystems_api_version': 'v2.0',
     'ixsystems_reserved_percentage': 0,
-    'ixsystems_replication_timetout': 600
+    'ixsystems_replication_timeout': 600
     }
 
 
@@ -309,7 +309,7 @@ class FreeNASISCSIDriverTestCase(unittest.TestCase):
         CONF.ixsystems_server_iscsi_port = 3260
         CONF.ixsystems_api_version = 'v2.0'
         CONF.ixsystems_reserved_percentage = 0
-        CONF.ixsystems_replication_timetout = 600
+        CONF.ixsystems_replication_timeout = 600
         self.driver = fakeiscsidriver(configuration=CONF)
 
     def test_check_for_setup_error(self):

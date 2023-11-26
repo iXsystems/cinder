@@ -53,7 +53,7 @@ class TrueNASCommon(object):
         self.vendor_name = self.configuration.ixsystems_vendor_name
         self.storage_protocol = self.configuration.ixsystems_storage_protocol
         self.apikey = self.configuration.ixsystems_apikey
-        self.timeout = int(self.configuration.ixsystems_replication_timetout)
+        self.timeout = int(self.configuration.ixsystems_replication_timeout)
         self.stats = {}
 
     def _create_handle(self, **kwargs):
@@ -630,12 +630,18 @@ class TrueNASCommon(object):
                 represult = json.loads(ret['response'])
                 self.replication_run(represult["id"])
                 starttime = int(time.time())
-                while True:
-                    if (int(time.time()) - starttime) > self.timeout:
-                        break
+                while (int(time.time()) - starttime) <= self.timeout:
                     time.sleep(1)
                     rs = self.replication_stats(represult["id"])
                     LOG.debug(f'replication id {rs["id"]} has state {rs["state"]["state"] }')
+                    if rs['state']['state'] in ["PENDING","RUNNING"]: continue
+                    if rs['state']['state'] == "ERROR":
+                        # for whatever reason replication may fail and report back state ERROR
+                        # clean up replication generated snapshot and replication task
+                        self.delete_snapshot(snapshot_name, target_volume_name)
+                        self.replication_delete(represult["id"])
+                        msg = (f'Error replicate volume from snapshot: {ret["response"]}')
+                        raise FreeNASApiError('Unexpected error', msg)
                     if rs['state']['state'] == "FINISHED":
                         # replication api will create default snapshot, which need to be
                         # removed to avoid future delete volume failed from openstack

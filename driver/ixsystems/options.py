@@ -78,6 +78,6 @@ ixsystems_provisioning_opts = [
     cfg.StrOpt('ixsystems_initiator_id',
                default=1,
                help='Storage controller iSCSI Initiator ID'),
-    cfg.StrOpt('ixsystems_replication_timetout',
+    cfg.StrOpt('ixsystems_replication_timeout',
                default='600',
                help='default 600 seconds for creating volume from snapshot by using replication API'),]
