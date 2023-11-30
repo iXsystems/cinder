@@ -51,6 +51,7 @@ class FreeNASServer(object):
     REST_API_TARGET_TO_EXTENT = "/iscsi/targetextent"
     # REST_API_TARGET_GROUP = "/services/iscsi/targetgroup/"
     REST_API_SNAPSHOT = "/zfs/snapshot"
+    REST_API_REPLICATION = "/replication"
     ZVOLS = "zvols"
     TARGET_ID = -1  # We assume invalid id to begin with
     STORAGE_TABLE = "/storage"

@@ -20,8 +20,8 @@ class UtilsTestCase(unittest.TestCase):
                          ix_utils.generate_freenas_volume_name(
                              name, iqn_prefix)['name'])
 
-    @ddt.data(("123456-123456-abcdef-abcdef-abcdef", "iqn", "snap-123456"),
-              ("234567-234567-abcdef-abcdef-abcdef", "iqn", "snap-234567"))
+    @ddt.data(("123456-123456-abcdef-abcdef-abcdef", "iqn", "snap-123456-1111-11-11-11-11"),
+              ("234567-234567-abcdef-abcdef-abcdef", "iqn", "snap-234567-1111-11-11-11-11"))
     @ddt.unpack
     def test_generate_freenas_snapshot_name(self, name, iqn_prefix, expected):
         self.assertEqual(expected, ix_utils.generate_freenas_snapshot_name(

@@ -17,7 +17,6 @@ This driver requires iXsystems storage systems with installed iSCSI licenses.
 """
 
 import simplejson as json
-import re
 
 from cinder.volume import driver
 from cinder.volume.drivers.ixsystems import common
@@ -251,9 +250,6 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
-        LOG.info('iXsystems Create Volume From Snapshot')
-        LOG.info(f'create_volume_from_snapshot {snapshot["name"]}')
-
         existing_vol = ix_utils.generate_freenas_volume_name(
             snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
         freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
@@ -263,23 +259,13 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         freenas_volume['size'] = volume['size']
         freenas_volume['target_size'] = volume['size']
 
-        self.common.create_volume_from_snapshot(freenas_volume['name'],
-                                                 freenas_snapshot['name'],
-                                                 existing_vol['name'])
+        LOG.info('iXsystems replicate Volume From Snapshot')
+        LOG.info(f'replicate_volume_from_snapshot {snapshot["name"]}')
+        self.common.replicate_volume_from_snapshot(freenas_volume['name'],
+                                                freenas_snapshot['name'],
+                                                existing_vol['name'])
         self.common.create_iscsitarget(freenas_volume['target'],
                                         freenas_volume['name'])
-
-        # Promote image cache volume created by cinder service account
-        # by checking project_id is cinder service project and display name match
-        # image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+ pattern
-        # This is required because image cache volume cloned from the snapshot of first volume
-        # provisioned by this image from upstream cinder flow code
-        # Without promoting image cache volume, the first volume created can no longer be deleted
-        if (self.configuration.safe_get('image_volume_cache_enabled')
-            and self.common.is_service_project(volume['project_id'])
-            and re.match(r"image-[a-zA-Z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+-[a-z0-9]+",
-                         volume['display_name'])):
-            self.common.promote_volume(freenas_volume['name'])
 
     def get_volume_stats(self, refresh=False):
         """Get stats info from volume group / pool."""
@@ -296,14 +282,13 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
 
         temp_snapshot = {'volume_name': src_vref['name'],
                          'name': f'name-{volume["id"]}'}
-
+        # New implementation uses replication api to create cloned volume
+        # from snapshot, this removes the dependency between parent volume
+        # snapshot and cloned volume. Temp snapshot need to be removed after
+        # clone successful
         self.create_snapshot(temp_snapshot)
         self.create_volume_from_snapshot(volume, temp_snapshot)
-        # self.delete_snapshot(temp_snapshot)
-        # with API v2.0 this causes FreeNAS error
-        # "snapshot has dependent clones".  Cannot delete while volume is
-        # active.  Instead, added check and deletion of orphaned dependent
-        # clones in common._delete_volume()
+        self.delete_snapshot(temp_snapshot)
 
     def extend_volume(self, volume, new_size):
         """Driver entry point to extend an existing volumes size."""

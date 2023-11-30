@@ -34,7 +34,7 @@ def generate_freenas_volume_name(name, iqn_prefix):
 
 def generate_freenas_snapshot_name(name, iqn_prefix):
     """Create FREENAS snapshot / iscsitarget name from Cinder name."""
-    backend_snap = 'snap-' + name.split('-')[1]
+    backend_snap = 'snap-' + name.split('-')[1] + '-1111-11-11-11-11'
     backend_target = 'target-' + name.split('-')[1]
     backend_iqn = iqn_prefix + backend_target
     return {'name': backend_snap,

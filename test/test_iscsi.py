@@ -27,6 +27,7 @@ class fakecommon(TrueNASCommon):
         self.common._target_to_extent = MagicMock()
         self.common._dependent_clone = MagicMock()
         self.common.delete_iscsitarget = MagicMock()
+        self.common.replicate_volume_from_snapshot = MagicMock()
         super().__init__(configuration=CONF)
 
     def _create_handle(self, **kwargs):
@@ -148,17 +149,25 @@ class fakecommon(TrueNASCommon):
             with patch(open_patch, return_value=urlrespond):
                 self.common.delete_snapshot(name, volume_name)
 
-    def create_volume_from_snapshot(self, name, snapshot_name, snap_zvol_name):
-        urlreadresult = b'{"snapshot": "pool/cinder/volume-be93bccd@snap-7'\
-            b'9fe98cf", "dataset_dst": "pool/cinder/volume-83b64291"}'
+    def replicate_volume_from_snapshot(self, target_volume_name,
+                                            snapshot_name, src_volume_name):
+        urlreadresult =  b'{ "id": 1, "target_dataset": "pool/cinder/volume-'\
+            b'ba323557","state": {"state": "FINISHED"}}'
+        replicationstatresult = b'{ "id": 1, "target_dataset": "pool/cinder/'\
+            b'volume-ba323557","state": {"state": "FINISHED"}}'
         urlrespond = MagicMock(name="urlrespond")
         urlrespondcontext = MagicMock(name="urlrespondcontext")
         urlrespond.__enter__.return_value = urlrespondcontext
         urlrespondcontext.read.return_value = urlreadresult
+        self.common.replication_run = MagicMock()
+        self.common.replication_stats = MagicMock(return_value
+                                                  = replicationstatresult)
+        self.common.delete_snapshot = MagicMock()
         with patch(request_patch):
             with patch(open_patch, return_value=urlrespond):
-                self.common.create_volume_from_snapshot(name, snapshot_name,
-                                                        snap_zvol_name)
+                self.common.replicate_volume_from_snapshot(target_volume_name,
+                                                           snapshot_name,
+                                                           src_volume_name)
 
     def promote_volume(self, volume_name):
         urlreadresult = b'null'
@@ -240,7 +249,7 @@ FakeConnector = {'initiator': 'iqn.2005-10.org.freenas.ctltarget-2b12',
                  }
 
 
-FakeSnapshot = {'name': "snap-fakeid", 'volume_name': 'fake-volumeid'}
+FakeSnapshot = {'name': "snap-fakeid-1111-11-11-11-11", 'volume_name': 'fake-volumeid'}
 
 
 fake_config_dict = {
@@ -262,7 +271,8 @@ fake_config_dict = {
     'ixsystems_storage_protocol': 'iscsi',
     'ixsystems_server_iscsi_port': 3260,
     'ixsystems_api_version': 'v2.0',
-    'ixsystems_reserved_percentage': 0
+    'ixsystems_reserved_percentage': 0,
+    'ixsystems_replication_timeout': 600
     }
 
 
@@ -299,6 +309,7 @@ class FreeNASISCSIDriverTestCase(unittest.TestCase):
         CONF.ixsystems_server_iscsi_port = 3260
         CONF.ixsystems_api_version = 'v2.0'
         CONF.ixsystems_reserved_percentage = 0
+        CONF.ixsystems_replication_timeout = 600
         self.driver = fakeiscsidriver(configuration=CONF)
 
     def test_check_for_setup_error(self):

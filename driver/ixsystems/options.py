@@ -37,7 +37,7 @@ ixsystems_connection_opts = [
                help='vendor name on Storage controller'),
     cfg.StrOpt('ixsystems_storage_protocol',
                default='iscsi',
-               help='storage protocol on Storage controller'), ]
+               help='storage protocol on Storage controller'),]
 
 ixsystems_transport_opts = [
     cfg.StrOpt('ixsystems_transport_type',
@@ -77,4 +77,7 @@ ixsystems_provisioning_opts = [
                help='Storage controller iSCSI portal ID'),
     cfg.StrOpt('ixsystems_initiator_id',
                default=1,
-               help='Storage controller iSCSI Initiator ID'), ]
+               help='Storage controller iSCSI Initiator ID'),
+    cfg.StrOpt('ixsystems_replication_timeout',
+               default='600',
+               help='default 600 seconds for creating volume from snapshot by using replication API'),]
