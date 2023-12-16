@@ -25,17 +25,28 @@ def get_bytes_from_gb(size_in_gb):
 
 def generate_freenas_volume_name(name, iqn_prefix):
     """Create FREENAS volume / iscsitarget name from Cinder name."""
-    backend_volume = 'volume-' + name.split('-')[1]
-    backend_target = 'target-' + name.split('-')[1]
+    backend_volume = 'volume-' + name
+    backend_target = 'target-' + name
     backend_iqn = iqn_prefix + backend_target
     return {'name': backend_volume,
             'target': backend_target, 'iqn': backend_iqn}
 
+def generate_volume_id_from_freenas_volume_name(name):
+    """Create Cinder volume name from FREENAS volume name."""
+    return name.replace('volume-', '')
+
+def generate_snapshot_id_from_freenas_snapshot_name(name):
+    """Create Cinder volume name from FREENAS volume name."""
+    return name.replace('snap-', '').replace('-1111-11-11-11-11', '')
 
 def generate_freenas_snapshot_name(name, iqn_prefix):
     """Create FREENAS snapshot / iscsitarget name from Cinder name."""
-    backend_snap = 'snap-' + name.split('-')[1] + '-1111-11-11-11-11'
-    backend_target = 'target-' + name.split('-')[1]
+    backend_snap = name
+    if not backend_snap.startswith('snap-'):
+        backend_snap = f"snap-{backend_snap}"
+    if not backend_snap.endswith('-1111-11-11-11-11'):
+        backend_snap = f"{backend_snap}-1111-11-11-11-11"
+    backend_target = 'target-' + name
     backend_iqn = iqn_prefix + backend_target
     return {'name': backend_snap,
             'target': backend_target, 'iqn': backend_iqn}

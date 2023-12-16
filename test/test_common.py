@@ -391,8 +391,8 @@ class TrueNASCommonTestCase(unittest.TestCase):
                                  self.common.handle.get_url()+request_d)
 
     @ddt.data(("f9ecfc53-2b12-4bfb-abe1-694970cc1341",
-               "10.3.1.81:3260,target-2b12 iqn.2005-10.org."
-               "freenas.ctltarget-2b12"))
+               "10.3.1.81:3260,target-f9ecfc53-2b12-4bfb-abe1-694970cc1341 iqn.2005-10.org."
+               "freenas.ctltarget-f9ecfc53-2b12-4bfb-abe1-694970cc1341"))
     @ddt.unpack
     def test_create_export(self, volume_name, expected):
         handle = self.common.create_export(volume_name)

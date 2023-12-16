@@ -607,9 +607,8 @@ class TrueNASCommon(object):
         """Use replicate api (zfs send/recv) to create a volume from snapshot """
         source_name = self.configuration.ixsystems_dataset_path + "/" + src_volume_name
         target_name = self.configuration.ixsystems_dataset_path + "/" + target_volume_name
-        split_snapshot_name = snapshot_name.split("-")
-        replication_name = f'Create volume {target_volume_name} from {src_volume_name}@{split_snapshot_name[0]}-{split_snapshot_name[1]}'
-        naming_schema = f'{split_snapshot_name[0]}-{split_snapshot_name[1]}-%Y-%m-%d-%H-%M'
+        replication_name = f'Create volume {target_volume_name} from {src_volume_name}@{snapshot_name}'
+        naming_schema = f"{snapshot_name.replace('-1111-11-11-11-11','')}-%Y-%m-%d-%H-%M"
         request_urn = f'{FreeNASServer.REST_API_REPLICATION}/'
         params = {"target_dataset": target_name,
                   "source_datasets": [source_name],"name":replication_name,
@@ -697,3 +696,67 @@ class TrueNASCommon(object):
             LOG.debug(f'replication_run response: {rep}')
         except FreeNASApiError as api_error:
             raise FreeNASApiError('Unexpected error', api_error) from api_error
+
+    def get_volume(self, volume_id):
+        """ Use dataset API /v2.0/pool/dataset/id/{id} to get volume details
+        """
+        LOG.debug(f'get_volume {volume_id}')
+        encoded_datapath = urllib.parse.quote_plus(
+                self.configuration.ixsystems_dataset_path + '/' + volume_id)        
+        request_urn = (f"/pool/dataset/id/{encoded_datapath}/")
+        try:
+            rep = self.handle.invoke_command(
+                FreeNASServer.SELECT_COMMAND,
+                request_urn, None)
+            LOG.debug(f'get_volume response: {rep}')
+            represult = json.loads(rep['response'])  
+            return represult        
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """ Use dataset API /v2.0/zfs/snapshot/id/{id} to get snapshot details
+        """
+        LOG.debug(f'get_snapshot {volume_name}@{snapshot_name}')
+        encoded_datapath = urllib.parse.quote_plus(
+                self.configuration.ixsystems_dataset_path + '/' 
+                + volume_name) + '@' + snapshot_name
+        request_urn = (f"/zfs/snapshot/id/{encoded_datapath}/")
+        try:
+            rep = self.handle.invoke_command(
+                FreeNASServer.SELECT_COMMAND,
+                request_urn, None)
+            LOG.debug(f'get_snapshot response: {rep}')
+            represult = json.loads(rep['response'])  
+            return represult        
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error
+
+    def get_all_snapshot(self):
+        """ Use dataset API /v2.0/zfs/snapshot/ to get all snapshot details
+        """
+        LOG.debug(f'get_all_snapshot')
+        request_urn = (f"/zfs/snapshot/")
+        try:
+            rep = self.handle.invoke_command(
+                FreeNASServer.SELECT_COMMAND,
+                request_urn, None)
+            LOG.debug(f'get_all_snapshot response: {rep}')
+            represult = json.loads(rep['response'])  
+            return represult        
+        except FreeNASApiError as api_error:
+            raise FreeNASApiError('Unexpected error', api_error) from api_error
+
+    def get_volume_from_snapshot(self, snapshot_name):
+        """
+        Use dataset API /v2.0/zfs/snapshot/ to get volume name from snapshot
+        """
+        all_snapshot = self.get_all_snapshot()
+        snaplist = [snap for snap in all_snapshot
+                    if snap["snapshot_name"] == snapshot_name]
+        if len(snaplist) == 1:
+            dataset = snaplist[0]["dataset"]
+            if self.configuration.ixsystems_dataset_path in dataset:
+                return(dataset.replace(
+                    f"{self.configuration.ixsystems_dataset_path}/",''))
+

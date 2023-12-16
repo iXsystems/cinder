@@ -12,16 +12,16 @@ class UtilsTestCase(unittest.TestCase):
     def test_get_size_in_gb(self, size_in_bytes, expected):
         self.assertEqual(expected, ix_utils.get_size_in_gb(size_in_bytes))
 
-    @ddt.data(("123456-123456-abcdef-abcdef-abcdef", "iqn", "volume-123456"),
-              ("234567-234567-abcdef-abcdef-abcdef", "iqn", "volume-234567"))
+    @ddt.data(("123456-123456-abcdef-abcdef-abcdef", "iqn", "volume-123456-123456-abcdef-abcdef-abcdef"),
+              ("234567-234567-abcdef-abcdef-abcdef", "iqn", "volume-234567-234567-abcdef-abcdef-abcdef"))
     @ddt.unpack
     def test_generate_freenas_volume_name(self, name, iqn_prefix, expected):
         self.assertEqual(expected,
                          ix_utils.generate_freenas_volume_name(
                              name, iqn_prefix)['name'])
 
-    @ddt.data(("123456-123456-abcdef-abcdef-abcdef", "iqn", "snap-123456-1111-11-11-11-11"),
-              ("234567-234567-abcdef-abcdef-abcdef", "iqn", "snap-234567-1111-11-11-11-11"))
+    @ddt.data(("123456-123456-abcdef-abcdef-abcdef", "iqn", "snap-123456-123456-abcdef-abcdef-abcdef-1111-11-11-11-11"),
+              ("234567-234567-abcdef-abcdef-abcdef", "iqn", "snap-234567-234567-abcdef-abcdef-abcdef-1111-11-11-11-11"))
     @ddt.unpack
     def test_generate_freenas_snapshot_name(self, name, iqn_prefix, expected):
         self.assertEqual(expected, ix_utils.generate_freenas_snapshot_name(

@@ -87,7 +87,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.debug(f'create_volume : volume name :: {volume["name"]}')
 
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            volume['name'],
+            volume['id'],
             self.configuration.ixsystems_iqn_prefix)
 
         LOG.debug(f'volume name after freenas generate : \
@@ -108,7 +108,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.debug(f'delete_volume {volume["name"]}')
 
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            volume['name'],
+            volume['id'],
             self.configuration.ixsystems_iqn_prefix)
 
         if freenas_volume['target']:
@@ -198,13 +198,13 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         """Driver entry point to attach a volume to an instance."""
         LOG.info('iXsystems Initialise Connection')
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            volume['name'],
+            volume['id'],
             self.configuration.ixsystems_iqn_prefix)
 
         if not freenas_volume['name']:
             # is this snapshot?
             freenas_volume = ix_utils.generate_freenas_snapshot_name(
-                volume['name'],
+                volume['id'],
                 self.configuration.ixsystems_iqn_prefix)
 
         properties = {}
@@ -224,12 +224,12 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def create_snapshot(self, snapshot):
         """Driver entry point for creating a snapshot."""
         LOG.info('iXsystems Create Snapshot')
-        LOG.debug(f'create_snapshot {snapshot["name"]}')
+        LOG.debug(f'create_snapshot {snapshot["id"]}')
 
         freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
-            snapshot['name'], self.configuration.ixsystems_iqn_prefix)
+            snapshot['id'], self.configuration.ixsystems_iqn_prefix)
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
+            snapshot['volume_id'], self.configuration.ixsystems_iqn_prefix)
 
         self.common.create_snapshot(freenas_snapshot['name'],
                                      freenas_volume['name'])
@@ -237,12 +237,12 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
         LOG.info('iXsystems Delete Snapshot')
-        LOG.debug(f'delete_snapshot {snapshot["name"]}')
+        LOG.debug(f'delete_snapshot {snapshot["id"]}')
         freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
-            snapshot['name'],
+            snapshot['id'],
             self.configuration.ixsystems_iqn_prefix)
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            snapshot['volume_name'],
+            snapshot['volume_id'],
             self.configuration.ixsystems_iqn_prefix)
 
         self.common.delete_snapshot(freenas_snapshot['name'],
@@ -251,16 +251,16 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from snapshot."""
         existing_vol = ix_utils.generate_freenas_volume_name(
-            snapshot['volume_name'], self.configuration.ixsystems_iqn_prefix)
+            snapshot['volume_id'], self.configuration.ixsystems_iqn_prefix)
         freenas_snapshot = ix_utils.generate_freenas_snapshot_name(
-            snapshot['name'], self.configuration.ixsystems_iqn_prefix)
+            snapshot['id'], self.configuration.ixsystems_iqn_prefix)
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            volume['name'], self.configuration.ixsystems_iqn_prefix)
+            volume['id'], self.configuration.ixsystems_iqn_prefix)
         freenas_volume['size'] = volume['size']
         freenas_volume['target_size'] = volume['size']
 
         LOG.info('iXsystems replicate Volume From Snapshot')
-        LOG.info(f'replicate_volume_from_snapshot {snapshot["name"]}')
+        LOG.info(f'replicate_volume_from_snapshot {snapshot["id"]}')
         self.common.replicate_volume_from_snapshot(freenas_volume['name'],
                                                 freenas_snapshot['name'],
                                                 existing_vol['name'])
@@ -278,10 +278,10 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
     def create_cloned_volume(self, volume, src_vref):
         """Creates a volume from source volume."""
         LOG.info('iXsystems Create Cloned Volume')
-        LOG.info(f'create_cloned_volume: {volume["id"]}')
+        LOG.info(f'create_cloned_volume: {volume["id"]} from {src_vref["id"]}')
 
-        temp_snapshot = {'volume_name': src_vref['name'],
-                         'name': f'name-{volume["id"]}'}
+        # Create a temp snapshot for cloning, this snapshot will be removed
+        temp_snapshot = {'id': volume["id"], 'volume_id': src_vref["id"]}
         # New implementation uses replication api to create cloned volume
         # from snapshot, this removes the dependency between parent volume
         # snapshot and cloned volume. Temp snapshot need to be removed after
@@ -296,9 +296,155 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         LOG.info(f'extend_volume { volume["name"]}')
 
         freenas_volume = ix_utils.generate_freenas_volume_name(
-            volume['name'], self.configuration.ixsystems_iqn_prefix)
+            volume['id'], self.configuration.ixsystems_iqn_prefix)
         freenas_new_size = new_size
 
         if volume['size'] != freenas_new_size:
             self.common.extend_volume(freenas_volume['name'],
                                        freenas_new_size)
+
+    def manage_existing(self, volume, existing_ref):
+        """Manages an existing Truenas volume zvol
+        - Existing volume must stays in ixsystems cinder driver managed pool
+          defined in cinder.conf ixsystems_dataset_path
+        - Truenas does not support rename existing zvol,
+        - driver will replicate to create a new zvol
+        """
+        volume_name = existing_ref['source-name']
+
+        # Check volume_name is not managed by cinder
+        if (len(cinderapi.CONF.list_all_sections()) > 0):
+            ctx = context.get_admin_context()
+            vols = cinderapi.volume_get_all(ctx)
+            find_matched_volume = 0
+            find_matched_volume = len(
+                [vol for vol in vols
+                    if vol.name and vol.name.find(volume_name) == 0])
+            if find_matched_volume == 1:
+                # volume_name is managed by cinder already
+                return
+
+        # Implementation of rename existing volume to new volume
+        # However truenas does not expose volume rename api
+        # Use replication api instead
+        volume_id = ix_utils.generate_volume_id_from_freenas_volume_name(volume_name)
+        temp_snapshot = {'volume_name': volume_name,
+                         'id': volume_id,
+                         'name': f'snap-{volume_id}',
+                         'volume_id': volume_id}
+        self.create_snapshot(temp_snapshot)
+        self.create_volume_from_snapshot(volume, temp_snapshot)
+        self.delete_snapshot(temp_snapshot)
+
+    def manage_existing_object_get_size(self, existing_object, existing_ref,
+                                        object_type):
+        """Return size of an existing manage existing volume or snapshot in GB
+
+        existing_ref is a dictionary of the form:
+        {'source-name': <name of volume or snapshot>}
+        """
+        if object_type == "volume":
+            volume_name = existing_ref['source-name']
+            try:
+                volume_detail = self.common.get_volume(volume_name)
+                return ix_utils.get_size_in_gb(int(volume_detail['used']['rawvalue']))
+            except FreeNASApiError:
+                LOG.error(f"Volume {volume_name} does not exist.")
+                exception = FreeNASApiError(f"Volume {volume_name}"\
+                    " does not exist.")
+                raise exception  
+        if object_type == "snapshot":
+            try:
+                snapshot_name = ix_utils.generate_freenas_snapshot_name(
+                    existing_ref['source-name'], '')['name']
+                volume_name = self.common.get_volume_from_snapshot(snapshot_name)
+                snapshot_detail = self.common.get_snapshot(volume_name, snapshot_name)
+                return ix_utils.get_size_in_gb(
+                    int(snapshot_detail['properties']['volsize']['rawvalue']))
+            except FreeNASApiError:
+                LOG.error(f"Snapshot {existing_ref['source-name']} does not exist.")
+                exception = FreeNASApiError(f"Snapshot {existing_ref['source-name']}"\
+                    " does not exist.")
+                raise exception                
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """
+        Returns the size of the existing volume to be managed.
+
+        :param volume: The volume object being managed.
+        :param existing_ref: A dictionary containing the reference to the
+                     existing volume.
+        :return: The size of the existing volume in GB.
+        """
+        return self.manage_existing_object_get_size(volume, existing_ref,
+                                "volume")
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        """
+        Returns the size of an existing snapshot that is being managed.
+
+        :param snapshot: The snapshot object being managed.
+        :param existing_ref: A reference to the existing snapshot.
+        :return: The size of the existing snapshot in GB.
+        """
+        return self.manage_existing_object_get_size(snapshot, existing_ref,
+                                "snapshot")
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """
+        Manages an existing snapshot.
+
+        Args:
+            snapshot: The snapshot object to be managed.
+            existing_ref: A dictionary containing the reference to the existing snapshot.
+
+        Raises:
+            FreeNASApiError: If the existing_ref is a snapshot of a non-cinder managed volume.
+
+        Returns:
+            None
+        """
+        snapshot_name = ix_utils.generate_freenas_snapshot_name(
+            existing_ref['source-name'], '')['name']
+        snapshot_id = ix_utils.generate_snapshot_id_from_freenas_snapshot_name(
+            snapshot_name)
+        volume_name = self.common.get_volume_from_snapshot(snapshot_name)        
+        # check snapshot_id is not a cinder managed snapshot
+        if (len(cinderapi.CONF.list_all_sections()) > 0):
+            ctx = context.get_admin_context()
+            snaps = cinderapi.snapshot_get_all(ctx)
+            find_matched_snapshot = 0
+            find_matched_snapshot = len(
+                [snap for snap in snaps
+                    if snap.name and snap.name.find(snapshot_id) == 0])
+            if find_matched_snapshot == 1:
+                # existing_ref is managed by cinder already
+                return
+
+        # Ensure volume_name is a cinder managed volume
+        if (len(cinderapi.CONF.list_all_sections()) > 0):
+            ctx = context.get_admin_context()
+            vols = cinderapi.volume_get_all(ctx)
+            find_matched_volume = 0
+            find_matched_volume = len(
+                [vol for vol in vols
+                    if vol.name and vol.name.find(volume_name) == 0])
+            if find_matched_volume != 1:
+                # existing_ref is a cinder managed volume snapshot
+                # It is not possible to manage a snapshot of a non-cinder managed volume
+                exception = FreeNASApiError('It is not possible to manage a '\
+                    'snapshot does not originate from a cinder managed volume')
+                raise exception
+        # Implementation of rename rename existing snapshot to new snapshot
+        # However truenas does not expose snapshot rename api 
+        # Leave for future implementation
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        # Return empty list for now, leave for future implement
+        return []
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        # Return empty list for now, leave for future implement                        :
+        return []
