@@ -435,7 +435,7 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
                 exception = FreeNASApiError('It is not possible to manage a '\
                     'snapshot does not originate from a cinder managed volume')
                 raise exception
-        # Implementation of rename rename existing snapshot to new snapshot
+        # Implementation of rename existing snapshot to new openstack snapshot id
         # However truenas does not expose snapshot rename api 
         # Leave for future implementation
 

@@ -32,11 +32,11 @@ def generate_freenas_volume_name(name, iqn_prefix):
             'target': backend_target, 'iqn': backend_iqn}
 
 def generate_volume_id_from_freenas_volume_name(name):
-    """Create Cinder volume name from FREENAS volume name."""
+    """Create Cinder volume id from FREENAS volume name."""
     return name.replace('volume-', '')
 
 def generate_snapshot_id_from_freenas_snapshot_name(name):
-    """Create Cinder volume name from FREENAS volume name."""
+    """Create Cinder snapshot id from FREENAS snapshot name."""
     return name.replace('snap-', '').replace('-1111-11-11-11-11', '')
 
 def generate_freenas_snapshot_name(name, iqn_prefix):

@@ -733,7 +733,7 @@ class TrueNASCommon(object):
             raise FreeNASApiError('Unexpected error', api_error) from api_error
 
     def get_all_snapshot(self):
-        """ Use dataset API /v2.0/zfs/snapshot/ to get all snapshot details
+        """ Use zfs snapshot API /v2.0/zfs/snapshot/ to get all snapshot details
         """
         LOG.debug(f'get_all_snapshot')
         request_urn = (f"/zfs/snapshot/")
@@ -749,7 +749,7 @@ class TrueNASCommon(object):
 
     def get_volume_from_snapshot(self, snapshot_name):
         """
-        Use dataset API /v2.0/zfs/snapshot/ to get volume name from snapshot
+        Use zfs snapshot API /v2.0/zfs/snapshot/ to get volume name from snapshot
         """
         all_snapshot = self.get_all_snapshot()
         snaplist = [snap for snap in all_snapshot
