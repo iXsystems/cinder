@@ -345,27 +345,28 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
         """
         if object_type == "volume":
             volume_name = existing_ref['source-name']
-            try:
-                volume_detail = self.common.get_volume(volume_name)
+            volume_detail = self.common.get_volume(volume_name)
+            if volume_detail:
                 return ix_utils.get_size_in_gb(int(volume_detail['used']['rawvalue']))
-            except FreeNASApiError:
+            else:
                 LOG.error(f"Volume {volume_name} does not exist.")
-                exception = FreeNASApiError(f"Volume {volume_name}"\
-                    " does not exist.")
-                raise exception  
+                exception = FreeNASApiError(f"Volume {volume_name} does not exist.")
+                raise exception                  
         if object_type == "snapshot":
-            try:
-                snapshot_name = ix_utils.generate_freenas_snapshot_name(
-                    existing_ref['source-name'], '')['name']
-                volume_name = self.common.get_volume_from_snapshot(snapshot_name)
-                snapshot_detail = self.common.get_snapshot(volume_name, snapshot_name)
+            snapshot_name = ix_utils.generate_freenas_snapshot_name(
+                existing_ref['source-name'], '')['name']
+            volume_name = ix_utils.generate_freenas_volume_name(
+                existing_object["volume_id"],
+                self.configuration.ixsystems_iqn_prefix)['name']
+            snapshot_detail = self.common.get_snapshot(volume_name, snapshot_name)
+            if snapshot_detail:
                 return ix_utils.get_size_in_gb(
                     int(snapshot_detail['properties']['volsize']['rawvalue']))
-            except FreeNASApiError:
+            else:
                 LOG.error(f"Snapshot {existing_ref['source-name']} does not exist.")
                 exception = FreeNASApiError(f"Snapshot {existing_ref['source-name']}"\
                     " does not exist.")
-                raise exception                
+                raise exception
 
     def manage_existing_get_size(self, volume, existing_ref):
         """
@@ -408,7 +409,9 @@ class FreeNASISCSIDriver(driver.ISCSIDriver):
             existing_ref['source-name'], '')['name']
         snapshot_id = ix_utils.generate_snapshot_id_from_freenas_snapshot_name(
             snapshot_name)
-        volume_name = self.common.get_volume_from_snapshot(snapshot_name)        
+        volume_name = ix_utils.generate_freenas_volume_name(
+            snapshot["volume_id"],
+            self.configuration.ixsystems_iqn_prefix)['name']
         # check snapshot_id is not a cinder managed snapshot
         if (len(cinderapi.CONF.list_all_sections()) > 0):
             ctx = context.get_admin_context()

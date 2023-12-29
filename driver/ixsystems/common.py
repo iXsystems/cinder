@@ -699,6 +699,7 @@ class TrueNASCommon(object):
 
     def get_volume(self, volume_id):
         """ Use dataset API /v2.0/pool/dataset/id/{id} to get volume details
+            return None if volume not found        
         """
         LOG.debug(f'get_volume {volume_id}')
         encoded_datapath = urllib.parse.quote_plus(
@@ -709,13 +710,20 @@ class TrueNASCommon(object):
                 FreeNASServer.SELECT_COMMAND,
                 request_urn, None)
             LOG.debug(f'get_volume response: {rep}')
-            represult = json.loads(rep['response'])  
-            return represult        
+            if rep['code'] == 404:
+                return None
+            if rep['status'] != FreeNASServer.STATUS_OK:
+                msg = (f'Error get volume: {rep["response"]}')
+                raise FreeNASApiError('Unexpected error', msg)          
+            if rep['status'] == FreeNASServer.STATUS_OK:
+                represult = json.loads(rep['response'])  
+                return represult
         except FreeNASApiError as api_error:
             raise FreeNASApiError('Unexpected error', api_error) from api_error
 
     def get_snapshot(self, volume_name, snapshot_name):
         """ Use dataset API /v2.0/zfs/snapshot/id/{id} to get snapshot details
+            return None if snapshot not found
         """
         LOG.debug(f'get_snapshot {volume_name}@{snapshot_name}')
         encoded_datapath = urllib.parse.quote_plus(
@@ -727,36 +735,14 @@ class TrueNASCommon(object):
                 FreeNASServer.SELECT_COMMAND,
                 request_urn, None)
             LOG.debug(f'get_snapshot response: {rep}')
-            represult = json.loads(rep['response'])  
-            return represult        
+            if rep['code'] == 404:
+                return None
+            if rep['status'] != FreeNASServer.STATUS_OK:
+                msg = (f'Error get volume: {rep["response"]}')
+                raise FreeNASApiError('Unexpected error', msg)
+            if rep['status'] == FreeNASServer.STATUS_OK:
+                represult = json.loads(rep['response'])
+                return represult
         except FreeNASApiError as api_error:
             raise FreeNASApiError('Unexpected error', api_error) from api_error
-
-    def get_all_snapshot(self):
-        """ Use zfs snapshot API /v2.0/zfs/snapshot/ to get all snapshot details
-        """
-        LOG.debug(f'get_all_snapshot')
-        request_urn = (f"/zfs/snapshot/")
-        try:
-            rep = self.handle.invoke_command(
-                FreeNASServer.SELECT_COMMAND,
-                request_urn, None)
-            LOG.debug(f'get_all_snapshot response: {rep}')
-            represult = json.loads(rep['response'])  
-            return represult        
-        except FreeNASApiError as api_error:
-            raise FreeNASApiError('Unexpected error', api_error) from api_error
-
-    def get_volume_from_snapshot(self, snapshot_name):
-        """
-        Use zfs snapshot API /v2.0/zfs/snapshot/ to get volume name from snapshot
-        """
-        all_snapshot = self.get_all_snapshot()
-        snaplist = [snap for snap in all_snapshot
-                    if snap["snapshot_name"] == snapshot_name]
-        if len(snaplist) == 1:
-            dataset = snaplist[0]["dataset"]
-            if self.configuration.ixsystems_dataset_path in dataset:
-                return(dataset.replace(
-                    f"{self.configuration.ixsystems_dataset_path}/",''))
 
