@@ -249,7 +249,7 @@ FakeConnector = {'initiator': 'iqn.2005-10.org.freenas.ctltarget-2b12',
                  }
 
 
-FakeSnapshot = {'name': "snap-fakeid-1111-11-11-11-11", 'volume_name': 'fake-volumeid'}
+FakeSnapshot = {'name': "snap-fakeid-1111-11-11-11-11", 'volume_name': 'fake-volumeid', 'id': 'fakeid', 'volume_id': 'fake-volumeid'}
 
 
 fake_config_dict = {
